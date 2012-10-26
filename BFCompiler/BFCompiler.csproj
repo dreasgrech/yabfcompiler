@@ -44,8 +44,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BrainfuckParser.cs" />
+    <Compile Include="CommandLineArgs\Options.cs" />
     <Compile Include="Compiler.cs" />
     <Compile Include="DILInstruction.cs" />
+    <Compile Include="Exceptions\UnknownLanguageException.cs" />
     <Compile Include="ILanguageParser.cs" />
     <Compile Include="OokParser.cs" />
     <Compile Include="Parser.cs" />

@@ -94,7 +94,7 @@ namespace BFCompiler
                             ilg.Emit(OpCodes.Ldloc, array);
                             ilg.Emit(OpCodes.Ldloc, ptr);
                             ilg.Emit(OpCodes.Ldelem_U2);
-                            ilg.EmitCall(OpCodes.Call, typeof(Console).GetMethods().First(m => m.Name == "Write" && m.GetParameters().Length == 1 && m.GetParameters().Any(p => p.ParameterType == typeof(char))), new[] { typeof(string) });
+                            ilg.EmitCall(OpCodes.Call, typeof(Console).GetMethods().First(m => m.Name == "Write" && m.GetParameters().Length == 1 && m.GetParameters().Any(p => p.ParameterType == typeof(char))), new[] { typeof(string) }); // TODO: Seriously find a better way how to invoke this one
                         }
                         break;
                     case DILInstruction.Input:
@@ -151,7 +151,7 @@ namespace BFCompiler
         {
             LocalBuilder array = ilg.DeclareLocal(typeof(T[]));
             array.SetLocalSymInfo(name);
-            ilg.Emit(OpCodes.Ldc_I4, size); // 30000
+            ilg.Emit(OpCodes.Ldc_I4, size); 
             ilg.Emit(OpCodes.Newarr, typeof(T));
             ilg.Emit(OpCodes.Stloc, array);
             return array;
