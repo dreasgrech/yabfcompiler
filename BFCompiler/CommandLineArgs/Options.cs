@@ -138,7 +138,7 @@ using System.Text.RegularExpressions;
 using System.Linq;
 #endif
 
-namespace BFCompiler.CommandLineArgs
+namespace YABFcompiler.CommandLineArgs
 {
 
     public class OptionValueCollection : IList, IList<string>

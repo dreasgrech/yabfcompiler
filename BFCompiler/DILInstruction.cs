@@ -1,5 +1,5 @@
 ﻿
-namespace BFCompiler
+namespace YABFcompiler
 {
     /// <summary>
     /// Dreas Intermediate Language instruction

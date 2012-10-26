@@ -1,10 +1,11 @@
 ﻿
-namespace BFCompiler
+namespace YABFcompiler
 {
     using System;
     using System.IO;
     using CommandLineArgs;
     using Exceptions;
+    using LanguageParsers;
 
     class Program
     {
@@ -31,7 +32,7 @@ namespace BFCompiler
             var fileInfo = new FileInfo(filename);
             Parser parser;
 
-            switch (fileInfo.Extension.Substring(1)) // remove the period.
+            switch (fileInfo.Extension.Substring(1).ToLower()) // remove the period.
             {
                 case "bf": parser = new BrainfuckParser(); break;
                 case "ook": parser = new OokParser(); break;

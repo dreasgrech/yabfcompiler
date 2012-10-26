@@ -1,5 +1,5 @@
 ﻿
-namespace BFCompiler
+namespace YABFcompiler
 {
     using System.Collections.Generic;
     using System.Linq;

@@ -1,5 +1,5 @@
 ﻿
-namespace BFCompiler.Exceptions
+namespace YABFcompiler.Exceptions
 {
     using System;
     using System.Runtime.Serialization;

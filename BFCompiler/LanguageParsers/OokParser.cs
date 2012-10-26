@@ -1,5 +1,5 @@
 ﻿
-namespace BFCompiler
+namespace YABFcompiler.LanguageParsers
 {
     using System.Collections.Generic;
 
