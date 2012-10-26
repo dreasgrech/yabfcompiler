@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
+﻿
 namespace BFCompiler
 {
+    using System.Collections.Generic;
+
     interface ILanguageParser
     {
         bool IsTokenAllowed(string token);

@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using BFCompiler.CommandLineArgs;
-using BFCompiler.Exceptions;
-
+﻿
 namespace BFCompiler
 {
+    using System;
+    using System.IO;
+    using CommandLineArgs;
+    using Exceptions;
+
     class Program
     {
         private static OptionSet options;
@@ -21,9 +19,6 @@ namespace BFCompiler
                 ShowHelp(options);
                 return;
             }
-
-            string bf = "+ ++ +++ ++++ +>+>> >>++++ +++++++ ++++++++ +++++++++ ++++++++++ ++++++>++++ ++++++++++++ +++++++++++++ +++<<<<<<[>[>> >>>>+>+<<<<<<<- ]>>>>>>>[<<<<<<< +>>>>>>>-]<[>++++ ++++++[-<-[>>+>+<< <-]>>>[<<<+>>>-]+<[ >[-]<[-]]>[<<[>>>+<< <-]>>[-]]<<]>>>[>>+>+ <<<-]>>>[<<<+>>>-]+<[> [-]<[-]]>[<<+>>[-]]<<<< <<<]>>>>>[++++++++++++++ +++++++++++++++++++++++++ +++++++++.[-]]++++++++++<[ ->-<]>+++++++++++++++++++++ +++++++++++++++++++++++++++.  [-]<<<<<<<<<<<<[>>>+>+<<<<-]> >>>[<<<<+>>>>-]<-[>>.>.<<<[-]] <<[>>+>+<<<-]>>>[<<<+>>>-]<<[<+ >-]>[<+>-]<<<-]",
-                   ook = "Ook. Ook? Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook.  Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook! Ook?  Ook? Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook.  Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook? Ook! Ook!  Ook? Ook! Ook? Ook. Ook! Ook. Ook. Ook? Ook. Ook. Ook.  Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook.  Ook! Ook? Ook? Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook.  Ook. Ook. Ook? Ook! Ook! Ook? Ook! Ook? Ook. Ook. Ook.  Ook! Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook.  Ook. Ook. Ook. Ook. Ook. Ook! Ook. Ook! Ook. Ook. Ook.  Ook. Ook. Ook. Ook. Ook! Ook. Ook. Ook? Ook. Ook? Ook.  Ook? Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook.  Ook. Ook. Ook. Ook. Ook. Ook. Ook! Ook? Ook? Ook. Ook.  Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook? Ook! Ook!  Ook? Ook! Ook? Ook. Ook! Ook. Ook. Ook? Ook. Ook? Ook.  Ook? Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook.  Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook!  Ook? Ook? Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook.  Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook.  Ook? Ook! Ook! Ook? Ook! Ook? Ook. Ook! Ook! Ook! Ook!  Ook! Ook! Ook! Ook. Ook? Ook. Ook? Ook. Ook? Ook. Ook?  Ook. Ook! Ook. Ook. Ook. Ook. Ook. Ook. Ook. Ook! Ook.  Ook! Ook! Ook! Ook! Ook! Ook! Ook! Ook! Ook! Ook! Ook!  Ook! Ook! Ook. Ook! Ook! Ook! Ook! Ook! Ook! Ook! Ook!  Ook! Ook! Ook! Ook! Ook! Ook! Ook! Ook! Ook! Ook. Ook.  Ook? Ook. Ook? Ook. Ook. Ook! Ook. ";
 
             var compiler = GetCompiler(option_filename);
 
@@ -47,10 +42,11 @@ namespace BFCompiler
 
         }
 
-        private static void ShowHelp(OptionSet optionSet)
+        static void ShowHelp(OptionSet options)
         {
-            
-
+            Console.WriteLine("Usage: {0} [options] <source>\n", AppDomain.CurrentDomain.FriendlyName);
+            Console.WriteLine("Options:");
+            options.WriteOptionDescriptions(Console.Out);
         }
 
         private static string ReadFile(string file)
@@ -74,7 +70,7 @@ namespace BFCompiler
             {
                 options.Parse(args);
             }
-            catch (OptionException ex)
+            catch (OptionException)
             {
                 status = false;
             }
@@ -85,18 +81,6 @@ namespace BFCompiler
             }
 
             return status;
-
-        }
-
-        static void TestParser(string source, Parser parser)
-        {
-            Console.WriteLine("Source: {0}", source);
-            foreach (var token in parser.GenerateDIL(source))
-            {
-                Console.WriteLine("{0}", token);
-            }
-
-            Console.WriteLine("---");
         }
     }
 }

@@ -1,24 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Text;
-using System.Threading;
-
+﻿
 namespace BFCompiler
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+    using System.Reflection;
+    using System.Reflection.Emit;
+
     class Compiler
     {
         public IEnumerable<DILInstruction> Instructions { get; private set; }
 
-        private List<char> domain; 
-
         public Compiler(IEnumerable<DILInstruction> instructions)
         {
             Instructions = instructions;
-            domain = new List<char>();
         }
 
         public void Compile(string filename)
@@ -33,8 +29,6 @@ namespace BFCompiler
             TypeBuilder tb = mb.DefineType("Program", TypeAttributes.Public | TypeAttributes.Class);
             MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Public | MethodAttributes.Static, null, new [] { typeof(string[]) });
             ILGenerator ilg = fb.GetILGenerator();
-
-           // var n = CreatePrimitive(ilg, typeof (int));
 
             LocalBuilder ptr = ilg.DeclareLocal(typeof(int));
             ilg.Emit(OpCodes.Ldc_I4_0);
@@ -137,14 +131,6 @@ namespace BFCompiler
 
             ab.Save(String.Format("{0}.exe", filename));
 
-        }
-
-        private LocalBuilder CreatePrimitive(ILGenerator ilg, Type localType, string name="")
-        {
-            //LocalBuilder loc = ilg.DeclareLocal(localType);
-            //loc.SetLocalSymInfo(name);
-
-            return null;//loc;
         }
 
         private LocalBuilder CreateArray<T>(ILGenerator ilg, int size, string name = "")

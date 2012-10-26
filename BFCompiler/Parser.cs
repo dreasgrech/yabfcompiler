@@ -1,30 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
+﻿
 namespace BFCompiler
 {
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text.RegularExpressions;
+
     abstract class Parser
     {
         protected Dictionary<string,DILInstruction> AllowedInstructions { get; private set; }
-        protected int TokenLength { get; private set; }
+        protected int MinimumTokenLength { get; private set; }
 
-        protected Parser(Dictionary<string,DILInstruction> instructions, int tokenLength)
+        protected Parser(Dictionary<string,DILInstruction> instructions)
         {
             AllowedInstructions = instructions;
-            TokenLength = tokenLength;
+            MinimumTokenLength = instructions.Min(d => d.Key.Length);
         }
 
         public IEnumerable<string> GetTokens(string source)
         {
+            source = source.Replace("\r\n", "");
             int index = 0;
             string token;
             while ((token = GetNextToken(source, ref index)) != null)
             {
-                index = IncrementCounterForNextToken(index);
                 yield return token;
             }
+        }
+
+        private static string RemoveWhitespace(string s)
+        {
+            return Regex.Replace(s, "[ \t]", "");
         }
 
         public IEnumerable<DILInstruction> GenerateDIL(string source)
@@ -39,24 +44,22 @@ namespace BFCompiler
 
         private string GetNextToken(string source, ref int index)
         {
-            while (index + TokenLength <= source.Length)
+            var tokenLengthRange = MinimumTokenLength;
+            while (index + tokenLengthRange <= source.Length)
             {
-                string token = source.Substring(index, TokenLength);
-                if (IsTokenAllowed(token))
+                string token = source.Substring(index, tokenLengthRange),
+                    cleanToken = RemoveWhitespace(token);
+
+                if (IsTokenAllowed(cleanToken))
                 {
-                    return token;
+                    index += token.Length;
+                    return cleanToken;
                 }
 
-                index++;
+                tokenLengthRange++;
             }
 
             return null;
-        }
-
-        private int IncrementCounterForNextToken(int counter)
-        {
-            //return counter + 1;
-            return counter + TokenLength; // this will skip over a chunk, making parser faster but it requires that all the tokens are of a fixed length 
         }
     }
 }
