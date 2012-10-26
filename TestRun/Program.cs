@@ -9,12 +9,13 @@ namespace TestRun
     {
         static void Main(string[] args)
         {
-            var array = new char[300000];
-            int ptr = 0;
-            //array[ptr] = Console.ReadKey().KeyChar;
-            while (array[ptr] != 0)
+            //var array = new char[300000];
+            //int ptr = 0;
+
+            int repetitions = 5;
+            for (int i = 0; i < repetitions; i++)
             {
-                Console.WriteLine("s");
+                Console.WriteLine("l");
             }
         }
     }

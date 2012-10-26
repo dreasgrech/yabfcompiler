@@ -10,12 +10,16 @@ namespace YABFcompiler
 
     class Compiler
     {
-        public IEnumerable<DILInstruction> Instructions { get; private set; }
+        public DILInstruction[] Instructions { get; private set; }
         public CompilationOptions Options { get; private set; }
+
+        private LocalBuilder ptr;
+        private LocalBuilder array;
+        private Stack <Label> loopStack;
 
         public Compiler(IEnumerable<DILInstruction> instructions, CompilationOptions options = 0)
         {
-            Instructions = instructions;
+            Instructions = instructions.ToArray();
             Options = options;
         }
 
@@ -32,98 +36,30 @@ namespace YABFcompiler
             MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Public | MethodAttributes.Static, null, null);
             ILGenerator ilg = fb.GetILGenerator();
 
-            LocalBuilder ptr = ilg.DeclareLocal(typeof(int));
-            ilg.Emit(OpCodes.Ldc_I4_0);
-            ilg.Emit(OpCodes.Stloc, ptr);
+            ptr = ilg.DeclareInteger();
+            array = ilg.CreateArray<char>(0x493e0);
 
-            var array = CreateArray<char>(ilg, 0x493e0, "array");
+            loopStack = new Stack<Label>();
 
-            var loopStack = new Stack<Label>();
-            foreach (var instruction in Instructions)
+            for (int i = 0; i < Instructions.Length; i++)
             {
-                switch (instruction)
-                {
-                    case DILInstruction.IncPtr:
-                        {
-                            ilg.Emit(OpCodes.Ldloc, ptr);
-                            ilg.Emit(OpCodes.Ldc_I4_1);
-                            ilg.Emit(OpCodes.Add);
-                            ilg.Emit(OpCodes.Stloc, ptr);
-                        }
-                         break;
-                    case DILInstruction.DecPtr:
-                        {
-                            ilg.Emit(OpCodes.Ldloc, ptr);
-                            ilg.Emit(OpCodes.Ldc_I4_1);
-                            ilg.Emit(OpCodes.Sub);
-                            ilg.Emit(OpCodes.Stloc, ptr);
-                        }
-                         break;
-                    case DILInstruction.Inc:
-                        {
-                            ilg.Emit(OpCodes.Ldloc, array);
-                            ilg.Emit(OpCodes.Ldloc, ptr);
-                            ilg.Emit(OpCodes.Ldelema, typeof(char));
-                            ilg.Emit(OpCodes.Dup);
-                            ilg.Emit(OpCodes.Ldobj, typeof(char));
-                            ilg.Emit(OpCodes.Ldc_I4_1);
-                            ilg.Emit(OpCodes.Add);
-                            ilg.Emit(OpCodes.Conv_U2);
-                            ilg.Emit(OpCodes.Stobj, typeof(char));
-                        }
-                        break;
-                    case DILInstruction.Dec:
-                        {
-                            ilg.Emit(OpCodes.Ldloc, array);
-                            ilg.Emit(OpCodes.Ldloc, ptr);
-                            ilg.Emit(OpCodes.Ldelema, typeof(char));
-                            ilg.Emit(OpCodes.Dup);
-                            ilg.Emit(OpCodes.Ldobj, typeof(char));
-                            ilg.Emit(OpCodes.Ldc_I4_1);
-                            ilg.Emit(OpCodes.Sub);
-                            ilg.Emit(OpCodes.Conv_U2);
-                            ilg.Emit(OpCodes.Stobj, typeof(char));
-                        }
-                        break;
-                    case DILInstruction.Output:
-                        {
-                            ilg.Emit(OpCodes.Ldloc, array);
-                            ilg.Emit(OpCodes.Ldloc, ptr);
-                            ilg.Emit(OpCodes.Ldelem_U2);
-                            ilg.EmitCall(OpCodes.Call, typeof(Console).GetMethods().First(m => m.Name == "Write" && m.GetParameters().Length == 1 && m.GetParameters().Any(p => p.ParameterType == typeof(char))), new[] { typeof(string) }); // TODO: Seriously find a better way how to invoke this one
-                        }
-                        break;
-                    case DILInstruction.Input:
-                        {
-                            ilg.Emit(OpCodes.Ldloc, array);
-                            ilg.Emit(OpCodes.Ldloc, ptr);
-                            ilg.EmitCall(OpCodes.Call, typeof(Console).GetMethod("Read"), null);
-                            ilg.Emit(OpCodes.Conv_U2);
-                            ilg.Emit(OpCodes.Stelem_I2);
-                        }
-                        break;
-                    case DILInstruction.StartLoop:
-                        {
-                            var L_0008 = ilg.DefineLabel();
-                            ilg.Emit(OpCodes.Br, L_0008);
-                            loopStack.Push(L_0008);
+                var instruction = Instructions[i];
 
-                            var L_0004 = ilg.DefineLabel();
-                            ilg.MarkLabel(L_0004);
-                            loopStack.Push(L_0004);
-                        }
-                        break;
-                    case DILInstruction.EndLoop:
-                        {
-                            Label go = loopStack.Pop(), mark = loopStack.Pop();
-                            ilg.MarkLabel(mark);
-                            ilg.Emit(OpCodes.Ldloc, array);
-                            ilg.Emit(OpCodes.Ldloc, ptr);
-                            ilg.Emit(OpCodes.Ldelem_U2);
-                            ilg.Emit(OpCodes.Brtrue, go);
-                        }
-                        break;
+                if (OptionEnabled(CompilationOptions.OptimizeForSpace))
+                {
+                    var repetitionTotal = GetTokenRepetitionTotal(i);
+                    if (repetitionTotal > 1)
+                    {
+                        var loop = ilg.StartForLoop(0, repetitionTotal);
+                        EmitInstruction(ilg, instruction);
+                        ilg.EndForLoop(loop);
+
+                        i += repetitionTotal - 1;
+                        continue;
+                    }
                 }
+
+                EmitInstruction(ilg, instruction);
             }
 
             ilg.Emit(OpCodes.Ret);
@@ -132,22 +68,123 @@ namespace YABFcompiler
             ab.SetEntryPoint(fb, PEFileKinds.ConsoleApplication);
 
             ab.Save(String.Format("{0}.exe", filename));
-
         }
 
-        private LocalBuilder CreateArray<T>(ILGenerator ilg, int size, string name = "")
+        private void EmitInstruction(ILGenerator ilg, DILInstruction instruction)
         {
-            LocalBuilder array = ilg.DeclareLocal(typeof(T[]));
-            array.SetLocalSymInfo(name);
-            ilg.Emit(OpCodes.Ldc_I4, size); 
-            ilg.Emit(OpCodes.Newarr, typeof(T));
-            ilg.Emit(OpCodes.Stloc, array);
-            return array;
+            switch (instruction)
+            {
+                case DILInstruction.IncPtr:
+                    {
+                        ilg.Emit(OpCodes.Ldloc, ptr);
+                        ilg.Emit(OpCodes.Ldc_I4_1);
+                        ilg.Emit(OpCodes.Add);
+                        ilg.Emit(OpCodes.Stloc, ptr);
+                    }
+                    break;
+                case DILInstruction.DecPtr:
+                    {
+                        ilg.Emit(OpCodes.Ldloc, ptr);
+                        ilg.Emit(OpCodes.Ldc_I4_1);
+                        ilg.Emit(OpCodes.Sub);
+                        ilg.Emit(OpCodes.Stloc, ptr);
+                    }
+                    break;
+                case DILInstruction.Inc:
+                    {
+                        ilg.Emit(OpCodes.Ldloc, array);
+                        ilg.Emit(OpCodes.Ldloc, ptr);
+                        ilg.Emit(OpCodes.Ldelema, typeof(char));
+                        ilg.Emit(OpCodes.Dup);
+                        ilg.Emit(OpCodes.Ldobj, typeof(char));
+                        ilg.Emit(OpCodes.Ldc_I4_1);
+                        ilg.Emit(OpCodes.Add);
+                        ilg.Emit(OpCodes.Conv_U2);
+                        ilg.Emit(OpCodes.Stobj, typeof(char));
+                    }
+                    break;
+                case DILInstruction.Dec:
+                    {
+                        ilg.Emit(OpCodes.Ldloc, array);
+                        ilg.Emit(OpCodes.Ldloc, ptr);
+                        ilg.Emit(OpCodes.Ldelema, typeof(char));
+                        ilg.Emit(OpCodes.Dup);
+                        ilg.Emit(OpCodes.Ldobj, typeof(char));
+                        ilg.Emit(OpCodes.Ldc_I4_1);
+                        ilg.Emit(OpCodes.Sub);
+                        ilg.Emit(OpCodes.Conv_U2);
+                        ilg.Emit(OpCodes.Stobj, typeof(char));
+                    }
+                    break;
+                case DILInstruction.Output:
+                    {
+                        ilg.Emit(OpCodes.Ldloc, array);
+                        ilg.Emit(OpCodes.Ldloc, ptr);
+                        ilg.Emit(OpCodes.Ldelem_U2);
+                        ilg.EmitCall(OpCodes.Call,
+                                     typeof(Console).GetMethods().First(
+                                         m =>
+                                         m.Name == "Write" && m.GetParameters().Length == 1 &&
+                                         m.GetParameters().Any(p => p.ParameterType == typeof(char))),
+                                     new[] { typeof(string) });
+                        // TODO: Seriously find a better way how to invoke this one
+                    }
+                    break;
+                case DILInstruction.Input:
+                    {
+                        ilg.Emit(OpCodes.Ldloc, array);
+                        ilg.Emit(OpCodes.Ldloc, ptr);
+                        ilg.EmitCall(OpCodes.Call, typeof(Console).GetMethod("Read"), null);
+                        ilg.Emit(OpCodes.Conv_U2);
+                        ilg.Emit(OpCodes.Stelem_I2);
+                    }
+                    break;
+                case DILInstruction.StartLoop:
+                    {
+                        var L_0008 = ilg.DefineLabel();
+                        ilg.Emit(OpCodes.Br, L_0008);
+                        loopStack.Push(L_0008);
+
+                        var L_0004 = ilg.DefineLabel();
+                        ilg.MarkLabel(L_0004);
+                        loopStack.Push(L_0004);
+                    }
+                    break;
+                case DILInstruction.EndLoop:
+                    {
+                        Label go = loopStack.Pop(), mark = loopStack.Pop();
+                        ilg.MarkLabel(mark);
+                        ilg.Emit(OpCodes.Ldloc, array);
+                        ilg.Emit(OpCodes.Ldloc, ptr);
+                        ilg.Emit(OpCodes.Ldelem_U2);
+                        ilg.Emit(OpCodes.Brtrue, go);
+                    }
+                    break;
+            }
         }
 
         private bool OptionEnabled(CompilationOptions option)
         {
             return (Options & option) == option;
+        }
+
+        private int GetTokenRepetitionTotal(int index)
+        {
+            var token = Instructions[index];
+            int total = 0;
+            for (int i = index; i < Instructions.Length; i++)
+            {
+                if (Instructions[i] == token)
+                {
+                    total++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return total;
         }
     }
 }

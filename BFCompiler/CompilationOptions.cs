@@ -6,6 +6,7 @@ namespace YABFcompiler
     [Flags]
     enum CompilationOptions
     {
-        OptimizeForSpace
+        None = 0x0,
+        OptimizeForSpace = 0x1,
     }
 }

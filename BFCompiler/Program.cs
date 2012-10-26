@@ -12,7 +12,7 @@ namespace YABFcompiler
         private static OptionSet options;
 
         private static string option_filename;
-        private static CompilationOptions option_compilationOptions;
+        private static CompilationOptions option_compilationOptions = 0;
 
         static void Main(string[] args)
         {
