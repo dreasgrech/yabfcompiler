@@ -23,13 +23,21 @@ namespace YABFcompiler
     }
     internal static class ILGeneratorHelpers
     {
-        public static LocalBuilder DeclareInteger(this ILGenerator ilg, int value = 0)
+        public static LocalBuilder DeclareIntegerVariable(this ILGenerator ilg, int value = 0)
         {
             LocalBuilder intVariable = ilg.DeclareLocal(typeof(int));
             ilg.Emit(OpCodes.Ldc_I4, value);
             ilg.Emit(OpCodes.Stloc, intVariable);
 
             return intVariable;
+        }
+
+        public static LocalBuilder ReassignIntegerVariable(this ILGenerator ilg, LocalBuilder variable, int value = 0)
+        {
+            ilg.Emit(OpCodes.Ldc_I4, value);
+            ilg.Emit(OpCodes.Stloc, variable);
+
+            return variable;
         }
 
         public static LocalBuilder CreateArray<T>(this ILGenerator ilg, int size, string name = "")
@@ -42,18 +50,31 @@ namespace YABFcompiler
             return array;
         }
 
-        public static ILForLoop StartForLoop(this ILGenerator ilg, int start, int maximum)
+        private static ILForLoop StartForLoop(this ILGenerator ilg, LocalBuilder counterVariable, LocalBuilder maximumVariable)
         {
-            LocalBuilder max = ilg.DeclareInteger(maximum),
-                         counter = ilg.DeclareInteger(start);
-
             var conditionLabel = ilg.DefineLabel();
             ilg.Emit(OpCodes.Br, conditionLabel);
 
             var startLoopLogicLabel = ilg.DefineLabel();
             ilg.MarkLabel(startLoopLogicLabel);
 
-            return new ILForLoop(conditionLabel, startLoopLogicLabel, counter, max);
+            return new ILForLoop(conditionLabel, startLoopLogicLabel, counterVariable, maximumVariable);
+        }
+
+        public static ILForLoop StartForLoop(this ILGenerator ilg, LocalBuilder startVariable, LocalBuilder maximumVariable, int start, int maximum)
+        {
+            startVariable = ilg.ReassignIntegerVariable(startVariable, start);
+            maximumVariable = ilg.ReassignIntegerVariable(maximumVariable, maximum);
+
+            return ilg.StartForLoop(startVariable, maximumVariable);
+        }
+
+        public static ILForLoop StartForLoop(this ILGenerator ilg, int start, int maximum)
+        {
+            LocalBuilder max = ilg.DeclareIntegerVariable(maximum),
+                         counter = ilg.DeclareIntegerVariable(start);
+
+            return ilg.StartForLoop(counter, max);
         }
 
         public static void EndForLoop(this ILGenerator ilg, ILForLoop forLoop)

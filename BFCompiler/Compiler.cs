@@ -36,23 +36,52 @@ namespace YABFcompiler
             MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Public | MethodAttributes.Static, null, null);
             ILGenerator ilg = fb.GetILGenerator();
 
-            ptr = ilg.DeclareInteger();
+            ptr = ilg.DeclareIntegerVariable();
             array = ilg.CreateArray<char>(0x493e0);
 
             loopStack = new Stack<Label>();
+
+           var forLoopSpaceOptimizationStack = new Stack<ILForLoop>();
+
+            //ILForLoop lastSpaceOptimizingForLoopUsed = null;
 
             for (int i = 0; i < Instructions.Length; i++)
             {
                 var instruction = Instructions[i];
 
-                if (OptionEnabled(CompilationOptions.OptimizeForSpace))
+                if (OptionEnabled(CompilationOptions.OptimizeForSpace) && (instruction != DILInstruction.StartLoop && instruction != DILInstruction.EndLoop)) // TODO: Still need to check whether I need the second condition checking for Start and End loops
                 {
                     var repetitionTotal = GetTokenRepetitionTotal(i);
                     if (repetitionTotal > 1)
                     {
-                        var loop = ilg.StartForLoop(0, repetitionTotal);
+                        ILForLoop now;
+                        if (forLoopSpaceOptimizationStack.Count > 0)
+                        {
+                            var last = forLoopSpaceOptimizationStack.Pop();
+                            now = ilg.StartForLoop(last.Counter,
+                                                   last.Max,
+                                                   0,
+                                                   repetitionTotal);
+                        } else
+                        {
+                            now = ilg.StartForLoop(0, repetitionTotal);
+                        }
+
+                        forLoopSpaceOptimizationStack.Push(now);
+                        //if (lastSpaceOptimizingForLoopUsed != null)
+                        //{
+                        //    lastSpaceOptimizingForLoopUsed = ilg.StartForLoop(lastSpaceOptimizingForLoopUsed.Counter,
+                        //                                                      lastSpaceOptimizingForLoopUsed.Max, 
+                        //                                                      0,
+                        //                                                      repetitionTotal);
+                        //}
+                        //else
+                        //{
+                        //    lastSpaceOptimizingForLoopUsed = ilg.StartForLoop(0, repetitionTotal);
+                        //}
+
                         EmitInstruction(ilg, instruction);
-                        ilg.EndForLoop(loop);
+                        ilg.EndForLoop(now);
 
                         i += repetitionTotal - 1;
                         continue;
