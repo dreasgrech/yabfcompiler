@@ -13,6 +13,8 @@ namespace YABFcompiler
         public DILInstruction[] Instructions { get; private set; }
         public CompilationOptions Options { get; private set; }
 
+        private const int OptimizationSpaceBlocks = 4; // the amount of repetition needed to start a for-loop block to compact statements
+
         private LocalBuilder ptr;
         private LocalBuilder array;
         private Stack <Label> loopStack;
@@ -49,19 +51,16 @@ namespace YABFcompiler
             {
                 var instruction = Instructions[i];
 
-                if (OptionEnabled(CompilationOptions.OptimizeForSpace) && (instruction != DILInstruction.StartLoop && instruction != DILInstruction.EndLoop)) // TODO: Still need to check whether I need the second condition checking for Start and End loops
+                if (OptionEnabled(CompilationOptions.OptimizeForSpace) && (instruction != DILInstruction.StartLoop && instruction != DILInstruction.EndLoop))
                 {
                     var repetitionTotal = GetTokenRepetitionTotal(i);
-                    if (repetitionTotal > 1)
+                    if (repetitionTotal >= OptimizationSpaceBlocks)
                     {
                         ILForLoop now;
                         if (forLoopSpaceOptimizationStack.Count > 0)
                         {
                             var last = forLoopSpaceOptimizationStack.Pop();
-                            now = ilg.StartForLoop(last.Counter,
-                                                   last.Max,
-                                                   0,
-                                                   repetitionTotal);
+                            now = ilg.StartForLoop(last.Counter, last.Max, 0, repetitionTotal);
                         } else
                         {
                             now = ilg.StartForLoop(0, repetitionTotal);
@@ -103,22 +102,8 @@ namespace YABFcompiler
         {
             switch (instruction)
             {
-                case DILInstruction.IncPtr:
-                    {
-                        ilg.Emit(OpCodes.Ldloc, ptr);
-                        ilg.Emit(OpCodes.Ldc_I4_1);
-                        ilg.Emit(OpCodes.Add);
-                        ilg.Emit(OpCodes.Stloc, ptr);
-                    }
-                    break;
-                case DILInstruction.DecPtr:
-                    {
-                        ilg.Emit(OpCodes.Ldloc, ptr);
-                        ilg.Emit(OpCodes.Ldc_I4_1);
-                        ilg.Emit(OpCodes.Sub);
-                        ilg.Emit(OpCodes.Stloc, ptr);
-                    }
-                    break;
+                case DILInstruction.IncPtr: ilg.Increment(ptr); break;
+                case DILInstruction.DecPtr: ilg.Decrement(ptr); break;
                 case DILInstruction.Inc:
                     {
                         ilg.Emit(OpCodes.Ldloc, array);

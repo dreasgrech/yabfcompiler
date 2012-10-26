@@ -21,8 +21,27 @@ namespace YABFcompiler
             StartLoopLogicLabel = startLoopLogicLabel;
         }
     }
+
     internal static class ILGeneratorHelpers
     {
+        public static LocalBuilder Increment(this ILGenerator ilg, LocalBuilder variable, int step = 1)
+        {
+            ilg.Emit(OpCodes.Ldloc, variable);
+            ilg.Emit(OpCodes.Ldc_I4, step);
+            ilg.Emit(OpCodes.Add);
+            ilg.Emit(OpCodes.Stloc, variable);
+            return variable;
+        }
+
+        public static LocalBuilder Decrement(this ILGenerator ilg, LocalBuilder variable, int step = 1)
+        {
+            ilg.Emit(OpCodes.Ldloc, variable);
+            ilg.Emit(OpCodes.Ldc_I4, step);
+            ilg.Emit(OpCodes.Sub);
+            ilg.Emit(OpCodes.Stloc, variable);
+            return variable;
+        }
+
         public static LocalBuilder DeclareIntegerVariable(this ILGenerator ilg, int value = 0)
         {
             LocalBuilder intVariable = ilg.DeclareLocal(typeof(int));
@@ -48,17 +67,6 @@ namespace YABFcompiler
             ilg.Emit(OpCodes.Newarr, typeof(T));
             ilg.Emit(OpCodes.Stloc, array);
             return array;
-        }
-
-        private static ILForLoop StartForLoop(this ILGenerator ilg, LocalBuilder counterVariable, LocalBuilder maximumVariable)
-        {
-            var conditionLabel = ilg.DefineLabel();
-            ilg.Emit(OpCodes.Br, conditionLabel);
-
-            var startLoopLogicLabel = ilg.DefineLabel();
-            ilg.MarkLabel(startLoopLogicLabel);
-
-            return new ILForLoop(conditionLabel, startLoopLogicLabel, counterVariable, maximumVariable);
         }
 
         public static ILForLoop StartForLoop(this ILGenerator ilg, LocalBuilder startVariable, LocalBuilder maximumVariable, int start, int maximum)
@@ -88,6 +96,17 @@ namespace YABFcompiler
             ilg.Emit(OpCodes.Ldloc, forLoop.Counter);
             ilg.Emit(OpCodes.Ldloc, forLoop.Max);
             ilg.Emit(OpCodes.Blt, forLoop.StartLoopLogicLabel);
+        }
+
+        private static ILForLoop StartForLoop(this ILGenerator ilg, LocalBuilder counterVariable, LocalBuilder maximumVariable)
+        {
+            var conditionLabel = ilg.DefineLabel();
+            ilg.Emit(OpCodes.Br, conditionLabel);
+
+            var startLoopLogicLabel = ilg.DefineLabel();
+            ilg.MarkLabel(startLoopLogicLabel);
+
+            return new ILForLoop(conditionLabel, startLoopLogicLabel, counterVariable, maximumVariable);
         }
 
     }

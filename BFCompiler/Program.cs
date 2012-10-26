@@ -37,6 +37,7 @@ namespace YABFcompiler
             {
                 case "bf": parser = new BrainfuckParser(); break;
                 case "ook": parser = new OokParser(); break;
+                case "sook": parser = new ShortOokParser(); break;
                 default: throw new UnknownLanguageException();
             }
 

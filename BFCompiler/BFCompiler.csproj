@@ -51,6 +51,7 @@
     <Compile Include="DILInstruction.cs" />
     <Compile Include="Exceptions\UnknownLanguageException.cs" />
     <Compile Include="LanguageParsers\OokParser.cs" />
+    <Compile Include="LanguageParsers\ShortOokParser.cs" />
     <Compile Include="Parser.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

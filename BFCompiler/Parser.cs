@@ -56,10 +56,21 @@ namespace YABFcompiler
                     return cleanToken;
                 }
 
+                if (!AnyTokenStartsWith(token[0].ToString()))
+                {
+                    index++;
+                    continue;
+                }
+
                 tokenLengthRange++;
             }
 
             return null;
+        }
+
+        private bool AnyTokenStartsWith(string beginning)
+        {
+            return AllowedInstructions.Any(i => i.Key.StartsWith(beginning));
         }
     }
 }
