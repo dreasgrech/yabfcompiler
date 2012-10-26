@@ -7,21 +7,37 @@ namespace BFCompiler
 {
     abstract class Parser
     {
-        protected string[] AllowedTokens { get; private set; }
+        protected Dictionary<string,DILInstruction> AllowedInstructions { get; private set; }
         protected int TokenLength { get; private set; }
 
-        protected Parser(string[] allowedTokens, int tokenLength)
+        protected Parser(Dictionary<string,DILInstruction> instructions, int tokenLength)
         {
-            AllowedTokens = allowedTokens;
+            AllowedInstructions = instructions;
             TokenLength = tokenLength;
         }
 
-        public bool IsTokenAllowed(string token)
+        public IEnumerable<string> GetTokens(string source)
         {
-            return AllowedTokens.Contains(token);
+            int index = 0;
+            string token;
+            while ((token = GetNextToken(source, ref index)) != null)
+            {
+                index = IncrementCounterForNextToken(index);
+                yield return token;
+            }
         }
 
-        public string GetNextToken(string source, ref int index)
+        public IEnumerable<DILInstruction> GenerateDIL(string source)
+        {
+            return GetTokens(source).Select(token => AllowedInstructions[token]);
+        }
+
+        private bool IsTokenAllowed(string token)
+        {
+            return AllowedInstructions.ContainsKey(token);
+        }
+
+        private string GetNextToken(string source, ref int index)
         {
             while (index + TokenLength <= source.Length)
             {
@@ -35,17 +51,6 @@ namespace BFCompiler
             }
 
             return null;
-        }
-
-        public IEnumerable<string> GetTokens(string source)
-        {
-            int index = 0;
-            string token;
-            while ((token = GetNextToken(source, ref index)) != null)
-            {
-                index = IncrementCounterForNextToken(index);
-                yield return token;
-            }
         }
 
         private int IncrementCounterForNextToken(int counter)
