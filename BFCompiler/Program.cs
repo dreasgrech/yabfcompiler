@@ -9,7 +9,7 @@ namespace BFCompiler
     {
         static void Main(string[] args)
         {
-            string bf = ">+++>+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++....",
+            string bf = " ++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.",
                    ook = "Ook. Ook? Ook. Ook. Ook. Ook.";
 
             Parser bfParser = new BrainfuckParser(),

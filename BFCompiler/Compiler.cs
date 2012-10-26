@@ -42,6 +42,7 @@ namespace BFCompiler
 
             var array = CreateArray<char>(ilg, 0x493e0, "array");
 
+            var loopStack = new Stack<Label>();
             foreach (var instruction in Instructions)
             {
                 switch (instruction)
@@ -96,17 +97,44 @@ namespace BFCompiler
                             ilg.EmitCall(OpCodes.Call, typeof(Console).GetMethods().First(m => m.Name == "Write" && m.GetParameters().Length == 1 && m.GetParameters().Any(p => p.ParameterType == typeof(char))), new[] { typeof(string) });
                         }
                         break;
+                    case DILInstruction.Input:
+                        {
+                            ilg.Emit(OpCodes.Ldloc, array);
+                            ilg.Emit(OpCodes.Ldloc, ptr);
+                            ilg.EmitCall(OpCodes.Call, typeof(Console).GetMethod("Read"), null);
+                            ilg.Emit(OpCodes.Conv_U2);
+                            ilg.Emit(OpCodes.Stelem_I2);
+                        }
+                        break;
+                    case DILInstruction.StartLoop:
+                        {
+                            var L_0008 = ilg.DefineLabel();
+                            ilg.Emit(OpCodes.Br, L_0008);
+                            loopStack.Push(L_0008);
+
+                            var L_0004 = ilg.DefineLabel();
+                            ilg.MarkLabel(L_0004);
+                            loopStack.Push(L_0004);
+                        }
+                        break;
+                    case DILInstruction.EndLoop:
+                        {
+                            Label go = loopStack.Pop(), mark = loopStack.Pop();
+                            ilg.MarkLabel(mark);
+                            ilg.Emit(OpCodes.Ldloc, array);
+                            ilg.Emit(OpCodes.Ldloc, ptr);
+                            ilg.Emit(OpCodes.Ldelem_U2);
+                            ilg.Emit(OpCodes.Brtrue, go);
+                        }
+                        break;
                 }
             }
 
-            //ilg.Emit(OpCodes.Ldc_I4_0);
             ilg.Emit(OpCodes.Ret);
 
             Type t = tb.CreateType();
-            // Set the entrypoint (thereby declaring it an EXE)
             ab.SetEntryPoint(fb, PEFileKinds.ConsoleApplication);
 
-            // Save it
             ab.Save(String.Format("{0}.exe", filename));
 
         }
@@ -127,11 +155,6 @@ namespace BFCompiler
             ilg.Emit(OpCodes.Newarr, typeof(T));
             ilg.Emit(OpCodes.Stloc, array);
             return array;
-        }
-
-        private void IncrementDomainCell(int ptr)
-        {
-            
         }
     }
 }

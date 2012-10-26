@@ -11,8 +11,11 @@ namespace TestRun
         {
             var array = new char[300000];
             int ptr = 0;
-
-Console.Write(array[ptr]);
+            //array[ptr] = Console.ReadKey().KeyChar;
+            while (array[ptr] != 0)
+            {
+                Console.WriteLine("s");
+            }
         }
     }
 }
