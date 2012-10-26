@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CompilationOptions.cs" />
     <Compile Include="LanguageParsers\BrainfuckParser.cs" />
     <Compile Include="CommandLineArgs\Options.cs" />
     <Compile Include="Compiler.cs" />

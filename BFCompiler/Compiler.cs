@@ -11,10 +11,12 @@ namespace YABFcompiler
     class Compiler
     {
         public IEnumerable<DILInstruction> Instructions { get; private set; }
+        public CompilationOptions Options { get; private set; }
 
-        public Compiler(IEnumerable<DILInstruction> instructions)
+        public Compiler(IEnumerable<DILInstruction> instructions, CompilationOptions options = 0)
         {
             Instructions = instructions;
+            Options = options;
         }
 
         public void Compile(string filename)
@@ -27,7 +29,7 @@ namespace YABFcompiler
             ModuleBuilder mb = ab.DefineDynamicModule(an.Name, String.Format("{0}.exe", filename), true);
 
             TypeBuilder tb = mb.DefineType("Program", TypeAttributes.Public | TypeAttributes.Class);
-            MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Public | MethodAttributes.Static, null, new [] { typeof(string[]) });
+            MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Public | MethodAttributes.Static, null, null);
             ILGenerator ilg = fb.GetILGenerator();
 
             LocalBuilder ptr = ilg.DeclareLocal(typeof(int));
@@ -141,6 +143,11 @@ namespace YABFcompiler
             ilg.Emit(OpCodes.Newarr, typeof(T));
             ilg.Emit(OpCodes.Stloc, array);
             return array;
+        }
+
+        private bool OptionEnabled(CompilationOptions option)
+        {
+            return (Options & option) == option;
         }
     }
 }

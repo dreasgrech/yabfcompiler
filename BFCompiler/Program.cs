@@ -12,6 +12,7 @@ namespace YABFcompiler
         private static OptionSet options;
 
         private static string option_filename;
+        private static CompilationOptions option_compilationOptions;
 
         static void Main(string[] args)
         {
@@ -36,10 +37,10 @@ namespace YABFcompiler
             {
                 case "bf": parser = new BrainfuckParser(); break;
                 case "ook": parser = new OokParser(); break;
-                default:throw new UnknownLanguageException();
+                default: throw new UnknownLanguageException();
             }
 
-            return new Compiler(parser.GenerateDIL(code));
+            return new Compiler(parser.GenerateDIL(code), option_compilationOptions);
 
         }
 
@@ -64,6 +65,7 @@ namespace YABFcompiler
                                * {"m|mutation=", "The mutation rate (0-1)", (double v) => mutationRate = v},
                               {"ctype=", "The crossover type [one | two ]", v => crossoverType = v},
                                */
+                               {"s", "Optimize for space", v => option_compilationOptions |= CompilationOptions.OptimizeForSpace},
                               {"?|h|help", "Show help", v => { status = false; }},
                               {"<>", v => option_filename = v}
                           };
