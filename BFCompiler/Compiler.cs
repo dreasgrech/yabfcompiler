@@ -7,13 +7,12 @@ namespace YABFcompiler
     using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
+    using ILConstructs;
 
-    class Compiler
+    internal class Compiler
     {
         public DILInstruction[] Instructions { get; private set; }
         public CompilationOptions Options { get; private set; }
-
-        private const int OptimizationSpaceBlocks = 4; // the amount of repetition needed to start a for-loop block to compact statements
 
         private LocalBuilder ptr;
         private LocalBuilder array;
@@ -27,109 +26,97 @@ namespace YABFcompiler
 
         public void Compile(string filename)
         {
-            var fileInfo = new FileInfo(filename);
-            AssemblyName an = new AssemblyName {Name = fileInfo.Name};
-            AppDomain ad = AppDomain.CurrentDomain;
-            AssemblyBuilder ab = ad.DefineDynamicAssembly(an, AssemblyBuilderAccess.Save);
-
-            ModuleBuilder mb = ab.DefineDynamicModule(an.Name, String.Format("{0}.exe", filename), true);
-
-            TypeBuilder tb = mb.DefineType("Program", TypeAttributes.Public | TypeAttributes.Class);
-            MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Public | MethodAttributes.Static, null, null);
-            ILGenerator ilg = fb.GetILGenerator();
+            var assembly = CreateAssemblyAndEntryPoint(filename);
+            ILGenerator ilg = assembly.MainMethod.GetILGenerator();
 
             ptr = ilg.DeclareIntegerVariable();
             array = ilg.CreateArray<char>(0x493e0);
 
             loopStack = new Stack<Label>();
 
-           var forLoopSpaceOptimizationStack = new Stack<ILForLoop>();
-
-            //ILForLoop lastSpaceOptimizingForLoopUsed = null;
+            var forLoopSpaceOptimizationStack = new Stack<ILForLoop>();
 
             for (int i = 0; i < Instructions.Length; i++)
             {
                 var instruction = Instructions[i];
 
-                if (OptionEnabled(CompilationOptions.OptimizeForSpace) && (instruction != DILInstruction.StartLoop && instruction != DILInstruction.EndLoop))
+                // If it's either a loop instruction or debug mode is set, emit the instruction without any optimizations
+                if (((instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)) ||
+                    OptionEnabled(CompilationOptions.DebugMode))
                 {
-                    var repetitionTotal = GetTokenRepetitionTotal(i);
-                    if (repetitionTotal >= OptimizationSpaceBlocks)
+                    EmitInstruction(ilg, instruction);
+                    continue;
+                }
+
+                var repetitionTotal = GetTokenRepetitionTotal(i);
+
+                if (repetitionTotal > 1)
+                {
+                    if (instruction == DILInstruction.Inc || instruction == DILInstruction.Dec)
+                    {
+                        if (instruction == DILInstruction.Inc)
+                        {
+                            Increment(ilg, repetitionTotal);
+                        }
+                        else
+                        {
+                            Decrement(ilg, repetitionTotal);
+                        }
+                    }
+                    else if (instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr)
+                    {
+                        if (instruction == DILInstruction.IncPtr)
+                        {
+                            ilg.Increment(ptr, repetitionTotal);
+                        }
+                        else
+                        {
+                            ilg.Decrement(ptr, repetitionTotal);
+                        }
+                    }
+                    else
                     {
                         ILForLoop now;
                         if (forLoopSpaceOptimizationStack.Count > 0)
                         {
                             var last = forLoopSpaceOptimizationStack.Pop();
                             now = ilg.StartForLoop(last.Counter, last.Max, 0, repetitionTotal);
-                        } else
+                        }
+                        else
                         {
                             now = ilg.StartForLoop(0, repetitionTotal);
                         }
 
                         forLoopSpaceOptimizationStack.Push(now);
-                        //if (lastSpaceOptimizingForLoopUsed != null)
-                        //{
-                        //    lastSpaceOptimizingForLoopUsed = ilg.StartForLoop(lastSpaceOptimizingForLoopUsed.Counter,
-                        //                                                      lastSpaceOptimizingForLoopUsed.Max, 
-                        //                                                      0,
-                        //                                                      repetitionTotal);
-                        //}
-                        //else
-                        //{
-                        //    lastSpaceOptimizingForLoopUsed = ilg.StartForLoop(0, repetitionTotal);
-                        //}
 
                         EmitInstruction(ilg, instruction);
                         ilg.EndForLoop(now);
-
-                        i += repetitionTotal - 1;
-                        continue;
                     }
-                }
 
-                EmitInstruction(ilg, instruction);
+                    i += repetitionTotal - 1;
+                }
+                else
+                {
+                    EmitInstruction(ilg, instruction);
+                }
             }
 
             ilg.Emit(OpCodes.Ret);
 
-            Type t = tb.CreateType();
-            ab.SetEntryPoint(fb, PEFileKinds.ConsoleApplication);
+            Type t = assembly.MainClass.CreateType();
+            assembly.DynamicAssembly.SetEntryPoint(assembly.MainMethod, PEFileKinds.ConsoleApplication);
 
-            ab.Save(String.Format("{0}.exe", filename));
+            assembly.DynamicAssembly.Save(String.Format("{0}.exe", filename));
         }
 
-        private void EmitInstruction(ILGenerator ilg, DILInstruction instruction)
+        private void EmitInstruction(ILGenerator ilg, DILInstruction instruction, int value = 1)
         {
             switch (instruction)
             {
-                case DILInstruction.IncPtr: ilg.Increment(ptr); break;
-                case DILInstruction.DecPtr: ilg.Decrement(ptr); break;
-                case DILInstruction.Inc:
-                    {
-                        ilg.Emit(OpCodes.Ldloc, array);
-                        ilg.Emit(OpCodes.Ldloc, ptr);
-                        ilg.Emit(OpCodes.Ldelema, typeof(char));
-                        ilg.Emit(OpCodes.Dup);
-                        ilg.Emit(OpCodes.Ldobj, typeof(char));
-                        ilg.Emit(OpCodes.Ldc_I4_1);
-                        ilg.Emit(OpCodes.Add);
-                        ilg.Emit(OpCodes.Conv_U2);
-                        ilg.Emit(OpCodes.Stobj, typeof(char));
-                    }
-                    break;
-                case DILInstruction.Dec:
-                    {
-                        ilg.Emit(OpCodes.Ldloc, array);
-                        ilg.Emit(OpCodes.Ldloc, ptr);
-                        ilg.Emit(OpCodes.Ldelema, typeof(char));
-                        ilg.Emit(OpCodes.Dup);
-                        ilg.Emit(OpCodes.Ldobj, typeof(char));
-                        ilg.Emit(OpCodes.Ldc_I4_1);
-                        ilg.Emit(OpCodes.Sub);
-                        ilg.Emit(OpCodes.Conv_U2);
-                        ilg.Emit(OpCodes.Stobj, typeof(char));
-                    }
-                    break;
+                case DILInstruction.IncPtr: ilg.Increment(ptr, value); break;
+                case DILInstruction.DecPtr: ilg.Decrement(ptr, value); break;
+                case DILInstruction.Inc: Increment(ilg, value); break;
+                case DILInstruction.Dec: Decrement(ilg, value); break;
                 case DILInstruction.Output:
                     {
                         ilg.Emit(OpCodes.Ldloc, array);
@@ -175,6 +162,47 @@ namespace YABFcompiler
                     }
                     break;
             }
+        }
+
+        private void Increment(ILGenerator ilg, int step = 1)
+        {
+            ilg.Emit(OpCodes.Ldloc, array);
+            ilg.Emit(OpCodes.Ldloc, ptr);
+            ilg.Emit(OpCodes.Ldelema, typeof(char));
+            ilg.Emit(OpCodes.Dup);
+            ilg.Emit(OpCodes.Ldobj, typeof(char));
+            ilg.Emit(OpCodes.Ldc_I4, step);
+            ilg.Emit(OpCodes.Add);
+            ilg.Emit(OpCodes.Conv_U2);
+            ilg.Emit(OpCodes.Stobj, typeof(char));
+        }
+
+        private void Decrement(ILGenerator ilg, int step = 1)
+        {
+            ilg.Emit(OpCodes.Ldloc, array);
+            ilg.Emit(OpCodes.Ldloc, ptr);
+            ilg.Emit(OpCodes.Ldelema, typeof(char));
+            ilg.Emit(OpCodes.Dup);
+            ilg.Emit(OpCodes.Ldobj, typeof(char));
+            ilg.Emit(OpCodes.Ldc_I4, step);
+            ilg.Emit(OpCodes.Sub);
+            ilg.Emit(OpCodes.Conv_U2);
+            ilg.Emit(OpCodes.Stobj, typeof(char));
+        }
+
+        private AssemblyInfo CreateAssemblyAndEntryPoint(string filename)
+        {
+            var fileInfo = new FileInfo(filename);
+            AssemblyName an = new AssemblyName { Name = fileInfo.Name };
+            AppDomain ad = AppDomain.CurrentDomain;
+            AssemblyBuilder ab = ad.DefineDynamicAssembly(an, AssemblyBuilderAccess.Save);
+
+            ModuleBuilder mb = ab.DefineDynamicModule(an.Name, String.Format("{0}.exe", filename), true);
+
+            TypeBuilder tb = mb.DefineType("Program", TypeAttributes.Public | TypeAttributes.Class);
+            MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Public | MethodAttributes.Static, null, null);
+
+            return new AssemblyInfo(ab, tb, fb);
         }
 
         private bool OptionEnabled(CompilationOptions option)

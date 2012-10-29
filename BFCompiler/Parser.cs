@@ -18,18 +18,13 @@ namespace YABFcompiler
 
         public IEnumerable<string> GetTokens(string source)
         {
-            source = source.Replace("\r\n", "");
+            source = source.Replace("\r\n", ""); 
             int index = 0;
             string token;
             while ((token = GetNextToken(source, ref index)) != null)
             {
                 yield return token;
             }
-        }
-
-        private static string RemoveWhitespace(string s)
-        {
-            return Regex.Replace(s, "[ \t]", "");
         }
 
         public IEnumerable<DILInstruction> GenerateDIL(string source)
@@ -40,6 +35,11 @@ namespace YABFcompiler
         private bool IsTokenAllowed(string token)
         {
             return AllowedInstructions.ContainsKey(token);
+        }
+
+        private static string RemoveWhitespace(string s)
+        {
+            return Regex.Replace(s, "[ \t]", "");
         }
 
         private string GetNextToken(string source, ref int index)

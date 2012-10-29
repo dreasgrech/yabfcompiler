@@ -7,7 +7,7 @@ namespace YABFcompiler
     using Exceptions;
     using LanguageParsers;
 
-    class Program
+    internal class Program
     {
         private static OptionSet options;
 
@@ -45,7 +45,7 @@ namespace YABFcompiler
 
         }
 
-        static void ShowHelp(OptionSet options)
+        private static void ShowHelp(OptionSet options)
         {
             Console.WriteLine("Usage: {0} [options] <source>\n", AppDomain.CurrentDomain.FriendlyName);
             Console.WriteLine("Options:");
@@ -62,11 +62,7 @@ namespace YABFcompiler
             bool status = true;
             options = new OptionSet
                           {
-                              /*
-                               * {"m|mutation=", "The mutation rate (0-1)", (double v) => mutationRate = v},
-                              {"ctype=", "The crossover type [one | two ]", v => crossoverType = v},
-                               */
-                               {"s", "Optimize for space", v => option_compilationOptions |= CompilationOptions.OptimizeForSpace},
+                              {"d", "Debug mode", v => option_compilationOptions |= CompilationOptions.DebugMode},
                               {"?|h|help", "Show help", v => { status = false; }},
                               {"<>", v => option_filename = v}
                           };

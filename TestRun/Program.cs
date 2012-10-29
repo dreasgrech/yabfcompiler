@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
+﻿
 namespace TestRun
 {
-    class Program
+    using System;
+
+    internal class Program
     {
         static void Main(string[] args)
         {

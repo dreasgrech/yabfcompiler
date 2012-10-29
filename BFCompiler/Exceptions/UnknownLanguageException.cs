@@ -5,7 +5,7 @@ namespace YABFcompiler.Exceptions
     using System.Runtime.Serialization;
 
     [Serializable]
-    public class UnknownLanguageException : Exception
+    internal class UnknownLanguageException : Exception
     {
         public UnknownLanguageException()
         {
