@@ -14,7 +14,7 @@ namespace YABFcompiler
         private static string option_filename;
         private static CompilationOptions option_compilationOptions = 0;
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             if (!HandleCommandLineArgs(args))
             {
@@ -24,7 +24,22 @@ namespace YABFcompiler
 
             var compiler = GetCompiler(option_filename);
 
-            compiler.Compile(Path.GetFileNameWithoutExtension(option_filename));
+            try
+            {
+                compiler.Compile(Path.GetFileNameWithoutExtension(option_filename));
+            } 
+            catch(CompilerException exception)
+            {
+                ShowError(String.Format("Compilation error: {0}", exception.Message));
+            }
+        }
+
+        private static void ShowError(string message)
+        {
+            var currentForeground = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(message);
+            Console.ForegroundColor = currentForeground;
         }
 
         private static Compiler GetCompiler(string filename)

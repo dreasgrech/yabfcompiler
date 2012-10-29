@@ -1,4 +1,6 @@
 ﻿
+using YABFcompiler.Exceptions;
+
 namespace YABFcompiler
 {
     using System;
@@ -9,6 +11,12 @@ namespace YABFcompiler
     using System.Reflection.Emit;
     using ILConstructs;
 
+    /*
+     * Optimization #1:
+     *  Loops which could never be entered are ignored.
+     *  This can happen when either:
+     *      1) A loop starts immediately after another loop
+     */
     internal class Compiler
     {
         public DILInstruction[] Instructions { get; private set; }
@@ -17,6 +25,7 @@ namespace YABFcompiler
         private LocalBuilder ptr;
         private LocalBuilder array;
         private Stack <Label> loopStack;
+        private DILInstruction previousInstruction;
 
         public Compiler(IEnumerable<DILInstruction> instructions, CompilationOptions options = 0)
         {
@@ -36,69 +45,92 @@ namespace YABFcompiler
 
             var forLoopSpaceOptimizationStack = new Stack<ILForLoop>();
 
+            /* TODO: 
+             *  Need to find a way to reduce the number of times I do previousInstruction = instruction; below because currently I'm doing it before every continue statement.
+             *  Or just do the assignment whenever the current instruction is an EndLoop since at the moment the only time I care about the previous instruction is when it's an EndLoop instruction
+             */
             for (int i = 0; i < Instructions.Length; i++)
             {
                 var instruction = Instructions[i];
 
-                // If it's either a loop instruction or debug mode is set, emit the instruction without any optimizations
-                if (((instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)) ||
-                    OptionEnabled(CompilationOptions.DebugMode))
+                if (OptionEnabled(CompilationOptions.DebugMode)) // If we're in debug mode, just emit the instruction as is and continue
                 {
                     EmitInstruction(ilg, instruction);
+                    previousInstruction = instruction;
                     continue;
                 }
 
-                var repetitionTotal = GetTokenRepetitionTotal(i);
+                var nextClosingLoopInstructionIndex = GetNextInstructionIndex(i, DILInstruction.EndLoop);
 
-                if (repetitionTotal > 1)
+                /*
+                 * If the current instruction is a StartLoop, make sure that there is a matching EndLoop, otherwise fail compilation
+                 */
+                if (instruction == DILInstruction.StartLoop && !nextClosingLoopInstructionIndex.HasValue)
                 {
-                    if (instruction == DILInstruction.Inc || instruction == DILInstruction.Dec)
+                    throw new InstructionNotFoundException(String.Format("Expected to find an {0} instruction but didn't.", DILInstruction.StartLoop.ToString()));
+                }
+
+                if (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop) // Optimization #1
+                {
+                    i = nextClosingLoopInstructionIndex.Value;
+                    previousInstruction = instruction;
+                    continue;
+                }
+
+                // If it's a loop instruction, emit the it without any optimizations
+                if (instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)
+                {
+                    EmitInstruction(ilg, instruction);
+                    previousInstruction = instruction;
+                    continue;
+                }
+
+                var repetitionTotal = GetTokenRepetitionTotal(i); // Optimization #2
+
+                if (instruction == DILInstruction.Inc || instruction == DILInstruction.Dec)
+                {
+                    if (instruction == DILInstruction.Inc)
                     {
-                        if (instruction == DILInstruction.Inc)
-                        {
-                            Increment(ilg, repetitionTotal);
-                        }
-                        else
-                        {
-                            Decrement(ilg, repetitionTotal);
-                        }
-                    }
-                    else if (instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr)
-                    {
-                        if (instruction == DILInstruction.IncPtr)
-                        {
-                            ilg.Increment(ptr, repetitionTotal);
-                        }
-                        else
-                        {
-                            ilg.Decrement(ptr, repetitionTotal);
-                        }
+                        Increment(ilg, repetitionTotal);
                     }
                     else
                     {
-                        ILForLoop now;
-                        if (forLoopSpaceOptimizationStack.Count > 0)
-                        {
-                            var last = forLoopSpaceOptimizationStack.Pop();
-                            now = ilg.StartForLoop(last.Counter, last.Max, 0, repetitionTotal);
-                        }
-                        else
-                        {
-                            now = ilg.StartForLoop(0, repetitionTotal);
-                        }
-
-                        forLoopSpaceOptimizationStack.Push(now);
-
-                        EmitInstruction(ilg, instruction);
-                        ilg.EndForLoop(now);
+                        Decrement(ilg, repetitionTotal);
                     }
-
-                    i += repetitionTotal - 1;
+                }
+                else if (instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr)
+                {
+                    if (instruction == DILInstruction.IncPtr)
+                    {
+                        ilg.Increment(ptr, repetitionTotal);
+                    }
+                    else
+                    {
+                        ilg.Decrement(ptr, repetitionTotal);
+                    }
                 }
                 else
                 {
+                    ILForLoop now;
+                    if (forLoopSpaceOptimizationStack.Count > 0)
+                    {
+                        var last = forLoopSpaceOptimizationStack.Pop();
+                        now = ilg.StartForLoop(last.Counter, last.Max, 0, repetitionTotal);
+                    }
+                    else
+                    {
+                        now = ilg.StartForLoop(0, repetitionTotal);
+                    }
+
+                    forLoopSpaceOptimizationStack.Push(now);
+
                     EmitInstruction(ilg, instruction);
+                    ilg.EndForLoop(now);
                 }
+
+                i += repetitionTotal - 1;
+
+                previousInstruction = instruction;
             }
 
             ilg.Emit(OpCodes.Ret);
@@ -107,6 +139,19 @@ namespace YABFcompiler
             assembly.DynamicAssembly.SetEntryPoint(assembly.MainMethod, PEFileKinds.ConsoleApplication);
 
             assembly.DynamicAssembly.Save(String.Format("{0}.exe", filename));
+        }
+
+        private int? GetNextInstructionIndex(int currentIndex, DILInstruction dILInstruction)
+        {
+            for (int i = currentIndex; i < Instructions.Length; i++)
+            {
+                if (Instructions[i] == dILInstruction)
+                {
+                    return i;
+                }
+            }
+
+            return null;
         }
 
         private void EmitInstruction(ILGenerator ilg, DILInstruction instruction, int value = 1)

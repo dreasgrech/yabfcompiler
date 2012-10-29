@@ -45,6 +45,8 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="CompilationOptions.cs" />
+    <Compile Include="Exceptions\CompilerException.cs" />
+    <Compile Include="Exceptions\InstructionNotFoundException.cs" />
     <Compile Include="ILConstructs\ILForLoop.cs" />
     <Compile Include="ILGeneratorHelpers.cs" />
     <Compile Include="LanguageParsers\BrainfuckParser.cs" />
