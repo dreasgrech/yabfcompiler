@@ -1,5 +1,4 @@
 ﻿
-using YABFcompiler.Exceptions;
 
 namespace YABFcompiler
 {
@@ -9,6 +8,7 @@ namespace YABFcompiler
     using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
+    using Exceptions;
     using ILConstructs;
 
     /*
@@ -16,6 +16,19 @@ namespace YABFcompiler
      *  Loops which could never be entered are ignored.
      *  This can happen when either:
      *      1) A loop starts immediately after another loop
+     *  
+     * Optimization #2:
+     *  Sequences of Input and Output are grouped in a for-loop
+     *  
+     * NOTE: I'm not sure how beneficial this optimization is because although it can reduce the 
+     * size of the compiled file, it may degrade performance due to the increased jmps introduced by
+     * the loop.
+     * 
+     * Optimization #3:
+     * This optimization removes groups together sequences of Incs and Decs, and IncPtrs and DecPtrs
+     * Examples: 
+     *      ++--+ is grouped as a single Inc(1) and -+-- is grouped as a single Dec(2)
+     *      ><<><< is grouped as a single DecPtr(2) and >><>> is grouped as a single IncPtr(3)
      */
     internal class Compiler
     {
@@ -26,6 +39,13 @@ namespace YABFcompiler
         private LocalBuilder array;
         private Stack <Label> loopStack;
         private DILInstruction previousInstruction;
+
+        /// <summary>
+        /// How many times must an Input or Output operation be repeated before it's put into a for-loop
+        /// 
+        /// This constant is used for Optimization #2.
+        /// </summary>
+        private const int ThresholdForLoopIntroduction = 1; 
 
         public Compiler(IEnumerable<DILInstruction> instructions, CompilationOptions options = 0)
         {
@@ -45,71 +65,68 @@ namespace YABFcompiler
 
             var forLoopSpaceOptimizationStack = new Stack<ILForLoop>();
 
-            /* TODO: 
-             *  Need to find a way to reduce the number of times I do previousInstruction = instruction; below because currently I'm doing it before every continue statement.
-             *  Or just do the assignment whenever the current instruction is an EndLoop since at the moment the only time I care about the previous instruction is when it's an EndLoop instruction
-             */
             for (int i = 0; i < Instructions.Length; i++)
             {
                 var instruction = Instructions[i];
+                if (i > 0)
+                {
+                    previousInstruction = Instructions[i - 1];
+                }
 
-                if (OptionEnabled(CompilationOptions.DebugMode)) // If we're in debug mode, just emit the instruction as is and continue
+                if (OptionEnabled(CompilationOptions.DebugMode))
+                    // If we're in debug mode, just emit the instruction as is and continue
                 {
                     EmitInstruction(ilg, instruction);
-                    previousInstruction = instruction;
                     continue;
                 }
 
-                var nextClosingLoopInstructionIndex = GetNextInstructionIndex(i, DILInstruction.EndLoop);
+                /* Start of Optimization #3 */
+                if ((instruction == DILInstruction.Inc || instruction == DILInstruction.Dec))
+                {
+                    var changes = CompactOppositeOperations(i, ilg, Increment, Decrement);
+                    i += changes;
+                    continue;
+                }
+
+                if (instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr)
+                {
+                    var changes = CompactOppositeOperations(i, ilg, IncrementPtr, DecrementPtr);
+                    i += changes;
+                    continue;
+                }
+                /* End of Optimization #3 */
+
+                var nextEndLoopInstructionIndex = GetNextInstructionIndex(i, DILInstruction.EndLoop);
 
                 /*
                  * If the current instruction is a StartLoop, make sure that there is a matching EndLoop, otherwise fail compilation
                  */
-                if (instruction == DILInstruction.StartLoop && !nextClosingLoopInstructionIndex.HasValue)
+                if (instruction == DILInstruction.StartLoop && !nextEndLoopInstructionIndex.HasValue)
                 {
                     throw new InstructionNotFoundException(String.Format("Expected to find an {0} instruction but didn't.", DILInstruction.StartLoop.ToString()));
                 }
 
-                if (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop) // Optimization #1
+                /* Start of Optimization #1 */
+                if (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop) 
                 {
-                    i = nextClosingLoopInstructionIndex.Value;
-                    previousInstruction = instruction;
+                    i = nextEndLoopInstructionIndex.Value;
                     continue;
                 }
+                /* End of Optimization #1 */
 
                 // If it's a loop instruction, emit the it without any optimizations
                 if (instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)
                 {
                     EmitInstruction(ilg, instruction);
-                    previousInstruction = instruction;
                     continue;
                 }
 
-                var repetitionTotal = GetTokenRepetitionTotal(i); // Optimization #2
+                /* Optimization #2
+                 *      The only instructions that arrive to this point are Input and Output 
+                 */
 
-                if (instruction == DILInstruction.Inc || instruction == DILInstruction.Dec)
-                {
-                    if (instruction == DILInstruction.Inc)
-                    {
-                        Increment(ilg, repetitionTotal);
-                    }
-                    else
-                    {
-                        Decrement(ilg, repetitionTotal);
-                    }
-                }
-                else if (instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr)
-                {
-                    if (instruction == DILInstruction.IncPtr)
-                    {
-                        ilg.Increment(ptr, repetitionTotal);
-                    }
-                    else
-                    {
-                        ilg.Decrement(ptr, repetitionTotal);
-                    }
-                }
-                else
+                var repetitionTotal = GetTokenRepetitionTotal(i);
+                if (repetitionTotal > ThresholdForLoopIntroduction) // Only introduce a loop if the repetition amount exceeds the threshold
                 {
                     ILForLoop now;
                     if (forLoopSpaceOptimizationStack.Count > 0)
@@ -126,11 +143,13 @@ namespace YABFcompiler
 
                     EmitInstruction(ilg, instruction);
                     ilg.EndForLoop(now);
+
+                    i += repetitionTotal - 1;
+                } 
+                else
+                {
+                    EmitInstruction(ilg, instruction);
                 }
-
-                i += repetitionTotal - 1;
-
-                previousInstruction = instruction;
             }
 
             ilg.Emit(OpCodes.Ret);
@@ -139,6 +158,30 @@ namespace YABFcompiler
             assembly.DynamicAssembly.SetEntryPoint(assembly.MainMethod, PEFileKinds.ConsoleApplication);
 
             assembly.DynamicAssembly.Save(String.Format("{0}.exe", filename));
+        }
+
+        private int CompactOppositeOperations(int index, ILGenerator ilg, Action<ILGenerator, int> positiveOperation, Action<ILGenerator, int> negativeOperation)
+        {
+            var instruction = Instructions[index];
+            var changes = GetMatchingOperationChanges(index, ~instruction);
+            if (instruction < 0)
+            {
+                changes.ChangesResult = -changes.ChangesResult;
+            }
+
+            if (changes.ChangesResult != 0)
+            {
+                if (changes.ChangesResult > 0)
+                {
+                    positiveOperation(ilg, changes.ChangesResult);
+                }
+                else
+                {
+                    negativeOperation(ilg, -changes.ChangesResult);
+                }
+            }
+
+            return changes.TotalNumberOfChanges - 1;
         }
 
         private int? GetNextInstructionIndex(int currentIndex, DILInstruction dILInstruction)
@@ -154,12 +197,32 @@ namespace YABFcompiler
             return null;
         }
 
+        private MatchingOperationChanges GetMatchingOperationChanges(int index, DILInstruction matchingInstruction)
+        {
+            int total = 0, totalNumberOfChanges = 0;
+            var currentInstruction = Instructions[index];
+            for (int i = index; i < Instructions.Length; i++)
+            {
+                if (Instructions[i] == matchingInstruction || Instructions[i] == currentInstruction)
+                {
+                    total += Instructions[i] == Instructions[index] ? 1 : -1;
+                    totalNumberOfChanges++;
+                }
+                else
+                {
+                    i = Instructions.Length;
+                }
+            }
+
+            return new MatchingOperationChanges(total, totalNumberOfChanges);
+        }
+
         private void EmitInstruction(ILGenerator ilg, DILInstruction instruction, int value = 1)
         {
             switch (instruction)
             {
-                case DILInstruction.IncPtr: ilg.Increment(ptr, value); break;
-                case DILInstruction.DecPtr: ilg.Decrement(ptr, value); break;
+                case DILInstruction.IncPtr: IncrementPtr(ilg, value); break;
+                case DILInstruction.DecPtr: DecrementPtr(ilg, value); break;
                 case DILInstruction.Inc: Increment(ilg, value); break;
                 case DILInstruction.Dec: Decrement(ilg, value); break;
                 case DILInstruction.Output:
@@ -233,6 +296,16 @@ namespace YABFcompiler
             ilg.Emit(OpCodes.Sub);
             ilg.Emit(OpCodes.Conv_U2);
             ilg.Emit(OpCodes.Stobj, typeof(char));
+        }
+
+        private void IncrementPtr(ILGenerator ilg, int step = 1)
+        {
+            ilg.Increment(ptr, step);
+        }
+
+        private void DecrementPtr(ILGenerator ilg, int step = 1)
+        {
+            ilg.Decrement(ptr, step);
         }
 
         private AssemblyInfo CreateAssemblyAndEntryPoint(string filename)
