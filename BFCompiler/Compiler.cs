@@ -45,7 +45,12 @@ namespace YABFcompiler
         /// 
         /// This constant is used for Optimization #2.
         /// </summary>
-        private const int ThresholdForLoopIntroduction = 1; 
+        private const int ThresholdForLoopIntroduction = 1;
+
+        /// <summary>
+        /// The size of the array domain for brainfuck to work in
+        /// </summary>
+        private const int DomainSize = 0x493e0;
 
         public Compiler(IEnumerable<DILInstruction> instructions, CompilationOptions options = 0)
         {
@@ -59,11 +64,17 @@ namespace YABFcompiler
             ILGenerator ilg = assembly.MainMethod.GetILGenerator();
 
             ptr = ilg.DeclareIntegerVariable();
-            array = ilg.CreateArray<char>(0x493e0);
+            array = ilg.CreateArray<char>(DomainSize);
 
             loopStack = new Stack<Label>();
 
             var forLoopSpaceOptimizationStack = new Stack<ILForLoop>();
+
+            DILInstruction? areLoopOperationsBalanced;
+            if ((areLoopOperationsBalanced = AreLoopOperationsBalanced()) != null)
+            {
+                throw new InstructionNotFoundException(String.Format("Expected to find an {0} instruction but didn't.", (~areLoopOperationsBalanced.Value).ToString()));
+            }
 
             for (int i = 0; i < Instructions.Length; i++)
             {
@@ -96,15 +107,7 @@ namespace YABFcompiler
                 }
                 /* End of Optimization #3 */
 
-                var nextEndLoopInstructionIndex = GetNextInstructionIndex(i, DILInstruction.EndLoop);
-
-                /*
-                 * If the current instruction is a StartLoop, make sure that there is a matching EndLoop, otherwise fail compilation
-                 */
-                if (instruction == DILInstruction.StartLoop && !nextEndLoopInstructionIndex.HasValue)
-                {
-                    throw new InstructionNotFoundException(String.Format("Expected to find an {0} instruction but didn't.", DILInstruction.StartLoop.ToString()));
-                }
+                var nextEndLoopInstructionIndex = GetNextClosingLoopIndex(i);
 
                 /* Start of Optimization #1 
                     If either a) the current instruction is a StartLoop and it's preceeded by an EndLoop or
@@ -167,6 +170,25 @@ namespace YABFcompiler
             assembly.DynamicAssembly.Save(String.Format("{0}.exe", filename));
         }
 
+        private DILInstruction? AreLoopOperationsBalanced()
+        {
+            int totalStartLoopOperations = Instructions.Where(instruction => instruction == DILInstruction.StartLoop).Count(),
+                totalEndLoopOperations = Instructions.Where(instruction => instruction == DILInstruction.EndLoop).Count();
+            
+            if (totalStartLoopOperations == totalEndLoopOperations)
+            {
+                return null;
+            }
+            if (totalStartLoopOperations > totalEndLoopOperations)
+            {
+                return DILInstruction.StartLoop;
+            } 
+            else
+            {
+                return DILInstruction.EndLoop;
+            }
+        }
+
         /// <summary>
         /// Used for Optimization #3.
         /// </summary>
@@ -195,12 +217,25 @@ namespace YABFcompiler
             return changes.TotalNumberOfChanges - 1;
         }
 
-        private int? GetNextInstructionIndex(int index, DILInstruction dILInstruction)
+        private int? GetNextClosingLoopIndex(int index)
         {
-            for (int i = index; i < Instructions.Length; i++)
+            int stack = 0;
+
+            for (int i = index + 1; i < Instructions.Length; i++)
             {
-                if (Instructions[i] == dILInstruction)
+                if (Instructions[i] == DILInstruction.StartLoop)
                 {
+                    stack += 1;
+                }
+
+                if (Instructions[i] == DILInstruction.EndLoop)
+                {
+                    if (stack > 0)
+                    {
+                        stack--;
+                        continue;
+                    }
+
                     return i;
                 }
             }
