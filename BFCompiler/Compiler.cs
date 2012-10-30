@@ -1,4 +1,6 @@
 ﻿
+using YABFcompiler.EventArguments;
+
 namespace YABFcompiler
 {
     using System;
@@ -34,6 +36,8 @@ namespace YABFcompiler
     {
         public DILInstruction[] Instructions { get; private set; }
         public CompilationOptions Options { get; private set; }
+
+        public event EventHandler<CompilationWarningEventArgs> OnWarning;
 
         private LocalBuilder ptr;
         private LocalBuilder array;
@@ -127,6 +131,15 @@ namespace YABFcompiler
                 // If it's a loop instruction, emit the it without any optimizations
                 if (instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)
                 {
+                    IEnumerable<DILInstruction> infiniteLoop;
+                    if (instruction == DILInstruction.StartLoop && (infiniteLoop = IsInfiniteLoopPattern(i)) != null)
+                    {
+                        if (OnWarning != null)
+                        {
+                            OnWarning(this, new CompilationWarningEventArgs("Infinite loop pattern detected at cell {0}: [{1}]", i, String.Concat(infiniteLoop)));
+                        }
+                    }
+
                     EmitInstruction(ilg, instruction);
                     continue;
                 }
@@ -179,14 +192,37 @@ namespace YABFcompiler
             {
                 return null;
             }
+
             if (totalStartLoopOperations > totalEndLoopOperations)
             {
                 return DILInstruction.StartLoop;
-            } 
-            else
-            {
-                return DILInstruction.EndLoop;
             }
+
+            return DILInstruction.EndLoop;
+        }
+
+        private IEnumerable<DILInstruction> IsInfiniteLoopPattern(int index)
+        {
+            var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
+            var loopInstructions = Instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
+            
+            if (loopInstructions.Length == 0) // [] can be an infinite loop if it starts on a cell which is not 0, otherwise it's skipped
+            {
+                return loopInstructions;
+            }
+
+            //var numberOfPtrMovements = loopInstructions.Count(instruction => instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr);
+
+            //if (numberOfPtrMovements > 0)
+            //{
+            //    var containsOnlyPtrMovements = loopInstructions.Length - numberOfPtrMovements == 0;
+            //    if (containsOnlyPtrMovements)
+            //    {
+                    
+            //    }
+            //}
+
+            return null;
         }
 
         /// <summary>

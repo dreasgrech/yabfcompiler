@@ -23,7 +23,7 @@ namespace YABFcompiler
             }
 
             var compiler = GetCompiler(option_filename);
-
+            compiler.OnWarning += compiler_OnWarning;
             try
             {
                 compiler.Compile(Path.GetFileNameWithoutExtension(option_filename));
@@ -34,10 +34,25 @@ namespace YABFcompiler
             }
         }
 
-        private static void ShowError(string message)
+        static void compiler_OnWarning(object sender, EventArguments.CompilationWarningEventArgs e)
+        {
+            ShowWarning("Warning: {0}", e.Message);
+        }
+
+        private static void ShowError(string message, params object[] args)
+        {
+            WriteToConsole(String.Format(message, args), ConsoleColor.Red);
+        }
+
+        private static void ShowWarning(string message, params object[] args)
+        {
+            WriteToConsole(String.Format(message, args), ConsoleColor.Yellow);
+        }
+
+        private static void WriteToConsole(string message, ConsoleColor color = ConsoleColor.White)
         {
             var currentForeground = Console.ForegroundColor;
-            Console.ForegroundColor = ConsoleColor.Red;
+            Console.ForegroundColor = color;
             Console.WriteLine(message);
             Console.ForegroundColor = currentForeground;
         }
