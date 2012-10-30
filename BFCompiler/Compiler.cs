@@ -1,5 +1,4 @@
 ﻿
-
 namespace YABFcompiler
 {
     using System;
@@ -15,7 +14,8 @@ namespace YABFcompiler
      * Optimization #1:
      *  Loops which could never be entered are ignored.
      *  This can happen when either:
-     *      1) A loop starts immediately after another loop
+     *      1) A loop starts immediately after another loop or
+     *      2) The loop is at the beginning of the program.
      *  
      * Optimization #2:
      *  Sequences of Input and Output are grouped in a for-loop
@@ -25,7 +25,7 @@ namespace YABFcompiler
      * the loop.
      * 
      * Optimization #3:
-     * This optimization removes groups together sequences of Incs and Decs, and IncPtrs and DecPtrs
+     * This optimization groups together sequences of Incs and Decs, and IncPtrs and DecPtrs
      * Examples: 
      *      ++--+ is grouped as a single Inc(1) and -+-- is grouped as a single Dec(2)
      *      ><<><< is grouped as a single DecPtr(2) and >><>> is grouped as a single IncPtr(3)
@@ -73,8 +73,8 @@ namespace YABFcompiler
                     previousInstruction = Instructions[i - 1];
                 }
 
-                if (OptionEnabled(CompilationOptions.DebugMode))
-                    // If we're in debug mode, just emit the instruction as is and continue
+                // If we're in debug mode, just emit the instruction as is and continue
+                if (OptionEnabled(CompilationOptions.DebugMode)) 
                 {
                     EmitInstruction(ilg, instruction);
                     continue;
@@ -106,8 +106,15 @@ namespace YABFcompiler
                     throw new InstructionNotFoundException(String.Format("Expected to find an {0} instruction but didn't.", DILInstruction.StartLoop.ToString()));
                 }
 
-                /* Start of Optimization #1 */
-                if (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop) 
+                /* Start of Optimization #1 
+                    If either a) the current instruction is a StartLoop and it's preceeded by an EndLoop or
+                              b) the current instruction is the first instruction and it's a StartLoop
+                 *  completely ignore the loops and carry on.
+                 */
+                if (
+                    (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop) //asdasd
+                    || (instruction == DILInstruction.StartLoop && i == 0) //asd22
+                    )
                 {
                     i = nextEndLoopInstructionIndex.Value;
                     continue;
@@ -160,6 +167,10 @@ namespace YABFcompiler
             assembly.DynamicAssembly.Save(String.Format("{0}.exe", filename));
         }
 
+        /// <summary>
+        /// Used for Optimization #3.
+        /// </summary>
+        /// <returns></returns>
         private int CompactOppositeOperations(int index, ILGenerator ilg, Action<ILGenerator, int> positiveOperation, Action<ILGenerator, int> negativeOperation)
         {
             var instruction = Instructions[index];
@@ -184,9 +195,9 @@ namespace YABFcompiler
             return changes.TotalNumberOfChanges - 1;
         }
 
-        private int? GetNextInstructionIndex(int currentIndex, DILInstruction dILInstruction)
+        private int? GetNextInstructionIndex(int index, DILInstruction dILInstruction)
         {
-            for (int i = currentIndex; i < Instructions.Length; i++)
+            for (int i = index; i < Instructions.Length; i++)
             {
                 if (Instructions[i] == dILInstruction)
                 {
