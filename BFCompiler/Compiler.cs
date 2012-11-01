@@ -1,5 +1,4 @@
 ﻿
-using YABFcompiler.EventArguments;
 
 namespace YABFcompiler
 {
@@ -9,6 +8,7 @@ namespace YABFcompiler
     using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
+    using EventArguments;
     using Exceptions;
     using ILConstructs;
 
@@ -155,14 +155,16 @@ namespace YABFcompiler
 
                 if (instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)
                 {
-                    /* Start of Optimization #4*/
                     IEnumerable<DILInstruction> loopInstructions;
-                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsClearanceLoop(i)) != null)
-                    {
-                        AssignValue(ilg, 0);
-                        i += loopInstructions.Count() + 1;
-                        continue;
-                    }
+
+                    /* Start of Optimization #4*/
+                    //if (instruction == DILInstruction.StartLoop && (loopInstructions = IsClearanceLoop(i)) != null)
+                    //{
+                    //    AssignValue(ilg, 0);
+                    //    i += loopInstructions.Count() + 1;
+                    //    continue;
+                    //}
+
                     /* End of Optimization #4*/
 
                     if (instruction == DILInstruction.EndLoop)
