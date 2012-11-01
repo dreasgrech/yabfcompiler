@@ -35,7 +35,7 @@ namespace YABFcompiler
      * Optimization #4:
      * Some patterns of clearance loops are detected and replaced with Assign(0)
      * Examples:
-     *      [-]
+     *      [-], [+]
      */
     internal class Compiler
     {
@@ -257,16 +257,19 @@ namespace YABFcompiler
         /// Returns the loop instructions if a clearance pattern is detected
         /// 
         /// The following patterns are currently detected:
-        ///     [-]
+        ///     [-], [+]
         /// </summary>
         /// <param name="index"></param>
         /// <returns></returns>
         private DILInstruction[] IsClearanceLoop(int index)
         {
             var loopInstructions = GetLoopInstructions(index);
-            if (loopInstructions.Length == 1 && loopInstructions[0] == DILInstruction.Dec) // [-]
+            if (loopInstructions.Length == 1) // [-] or [+]
             {
-                return loopInstructions;
+                if (loopInstructions[0] == DILInstruction.Dec || loopInstructions[0] == DILInstruction.Inc)
+                {
+                    return loopInstructions;
+                }
             }
 
             return null;
