@@ -10,11 +10,15 @@ namespace TestRun
             //var array = new char[300000];
             //int ptr = 0;
 
-            int repetitions = 5;
-            for (int i = 0; i < repetitions; i++)
+            int index = 0;
+            char[] chArray = new char[0x493e0];
+            chArray[index] = (char)(chArray[index] + '\x0001');
+            while (chArray[index] != '\0')
             {
-                Console.WriteLine("l");
+                chArray[index] = (char)(chArray[index] + '\x0001');
             }
+            Console.Write(chArray[index]);
+
         }
     }
 }

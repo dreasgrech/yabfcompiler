@@ -12,6 +12,7 @@ namespace YABFcompiler
         private static OptionSet options;
 
         private static string option_filename;
+        private static string option_customLanguage;
         private static CompilationOptions option_compilationOptions = 0;
 
         private static void Main(string[] args)
@@ -23,7 +24,7 @@ namespace YABFcompiler
             }
 
             var compiler = GetCompiler(option_filename);
-
+            compiler.OnWarning += compiler_OnWarning;
             try
             {
                 compiler.Compile(Path.GetFileNameWithoutExtension(option_filename));
@@ -34,10 +35,25 @@ namespace YABFcompiler
             }
         }
 
-        private static void ShowError(string message)
+        static void compiler_OnWarning(object sender, EventArguments.CompilationWarningEventArgs e)
+        {
+            ShowWarning("Warning: {0}", e.Message);
+        }
+
+        private static void ShowError(string message, params object[] args)
+        {
+            WriteToConsole(String.Format(message, args), ConsoleColor.Red);
+        }
+
+        private static void ShowWarning(string message, params object[] args)
+        {
+            WriteToConsole(String.Format(message, args), ConsoleColor.Yellow);
+        }
+
+        private static void WriteToConsole(string message, ConsoleColor color = ConsoleColor.White)
         {
             var currentForeground = Console.ForegroundColor;
-            Console.ForegroundColor = ConsoleColor.Red;
+            Console.ForegroundColor = color;
             Console.WriteLine(message);
             Console.ForegroundColor = currentForeground;
         }
@@ -48,12 +64,19 @@ namespace YABFcompiler
             var fileInfo = new FileInfo(filename);
             Parser parser;
 
-            switch (fileInfo.Extension.Substring(1).ToLower()) // remove the period.
+            if (!String.IsNullOrEmpty(option_customLanguage))
             {
-                case "bf": parser = new BrainfuckParser(); break;
-                case "ook": parser = new OokParser(); break;
-                case "sook": parser = new ShortOokParser(); break;
-                default: throw new UnknownLanguageException();
+                parser = new CustomLanguageParser(File.ReadAllLines(option_customLanguage));
+            }
+            else
+            {
+                switch (fileInfo.Extension.Substring(1).ToLower()) // remove the period.
+                {
+                    case "bf": parser = new BrainfuckParser(); break;
+                    case "ook": parser = new OokParser(); break;
+                    case "sook": parser = new ShortOokParser(); break;
+                    default: throw new UnknownLanguageException();
+                }
             }
 
             return new Compiler(parser.GenerateDIL(code), option_compilationOptions);
@@ -78,6 +101,7 @@ namespace YABFcompiler
             options = new OptionSet
                           {
                               {"d", "Debug mode", v => option_compilationOptions |= CompilationOptions.DebugMode},
+                              {"l|language=", "Custom language", v => option_customLanguage = v},
                               {"?|h|help", "Show help", v => { status = false; }},
                               {"<>", v => option_filename = v}
                           };

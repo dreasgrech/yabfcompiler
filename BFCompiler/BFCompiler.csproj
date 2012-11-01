@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="CompilationOptions.cs" />
+    <Compile Include="EventArguments\CompilationWarningEventArgs.cs" />
     <Compile Include="Exceptions\CompilerException.cs" />
     <Compile Include="Exceptions\InstructionNotFoundException.cs" />
     <Compile Include="ILConstructs\ILForLoop.cs" />
@@ -54,6 +55,7 @@
     <Compile Include="Compiler.cs" />
     <Compile Include="DILInstruction.cs" />
     <Compile Include="Exceptions\UnknownLanguageException.cs" />
+    <Compile Include="LanguageParsers\CustomLanguageParser.cs" />
     <Compile Include="LanguageParsers\OokParser.cs" />
     <Compile Include="LanguageParsers\ShortOokParser.cs" />
     <Compile Include="MatchingOperationChanges.cs" />

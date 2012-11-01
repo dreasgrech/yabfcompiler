@@ -1,4 +1,6 @@
 ﻿
+using YABFcompiler.EventArguments;
+
 namespace YABFcompiler
 {
     using System;
@@ -29,11 +31,18 @@ namespace YABFcompiler
      * Examples: 
      *      ++--+ is grouped as a single Inc(1) and -+-- is grouped as a single Dec(2)
      *      ><<><< is grouped as a single DecPtr(2) and >><>> is grouped as a single IncPtr(3)
+     *      
+     * Optimization #4:
+     * Some patterns of clearance loops are detected and replaced with Assign(0)
+     * Examples:
+     *      [-], [+]
      */
     internal class Compiler
     {
         public DILInstruction[] Instructions { get; private set; }
         public CompilationOptions Options { get; private set; }
+
+        public event EventHandler<CompilationWarningEventArgs> OnWarning;
 
         private LocalBuilder ptr;
         private LocalBuilder array;
@@ -45,7 +54,7 @@ namespace YABFcompiler
         /// 
         /// This constant is used for Optimization #2.
         /// </summary>
-        private const int ThresholdForLoopIntroduction = 1;
+        private const int ThresholdForLoopIntroduction = 4;
 
         /// <summary>
         /// The size of the array domain for brainfuck to work in
@@ -115,8 +124,8 @@ namespace YABFcompiler
                  *  completely ignore the loops and carry on.
                  */
                 if (
-                    (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop) //asdasd
-                    || (instruction == DILInstruction.StartLoop && i == 0) //asd22
+                    (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop) 
+                    || (instruction == DILInstruction.StartLoop && i == 0) 
                     )
                 {
                     i = nextEndLoopInstructionIndex.Value;
@@ -124,9 +133,26 @@ namespace YABFcompiler
                 }
                 /* End of Optimization #1 */
 
-                // If it's a loop instruction, emit the it without any optimizations
                 if (instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)
                 {
+                    /* Start of Optimization #4*/
+                    IEnumerable<DILInstruction> loopInstructions;
+                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsClearanceLoop(i)) != null)
+                    {
+                        AssignValue(ilg, 0);
+                        i += loopInstructions.Count() + 1;
+                        continue;
+                    }
+                    /* End of Optimization #4*/
+                    
+                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsInfiniteLoopPattern(i)) != null)
+                    {
+                        if (OnWarning != null)
+                        {
+                            OnWarning(this, new CompilationWarningEventArgs("Infinite loop pattern detected at cell {0}: [{1}]", i, String.Concat(loopInstructions)));
+                        }
+                    }
+
                     EmitInstruction(ilg, instruction);
                     continue;
                 }
@@ -179,14 +205,74 @@ namespace YABFcompiler
             {
                 return null;
             }
+
             if (totalStartLoopOperations > totalEndLoopOperations)
             {
                 return DILInstruction.StartLoop;
-            } 
-            else
-            {
-                return DILInstruction.EndLoop;
             }
+
+            return DILInstruction.EndLoop;
+        }
+
+        /// <summary>
+        /// Returns the instructions the loop contains if an infinite loop pattern is detected
+        /// </summary>
+        /// <param name="index">The index of the StartLoop instruction</param>
+        /// <returns></returns>
+        private IEnumerable<DILInstruction> IsInfiniteLoopPattern(int index)
+        {
+            var loopInstructions = GetLoopInstructions(index);
+
+            if (loopInstructions.Length == 0) // [] can be an infinite loop if it starts on a cell which is not 0, otherwise it's skipped
+            {
+                return loopInstructions;
+            }
+
+            //var numberOfPtrMovements = loopInstructions.Count(instruction => instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr);
+
+            //if (numberOfPtrMovements > 0)
+            //{
+            //    var containsOnlyPtrMovements = loopInstructions.Length - numberOfPtrMovements == 0;
+            //    if (containsOnlyPtrMovements)
+            //    {
+
+            //    }
+            //}
+
+            return null;
+        }
+
+        /// <summary>
+        /// Returns the instructions the loop contains
+        /// </summary>
+        /// <param name="index">The index of the StartLoop instruction</param>
+        /// <returns></returns>
+        private DILInstruction[] GetLoopInstructions(int index)
+        {
+            var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
+            return Instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
+        } 
+
+        /// <summary>
+        /// Returns the loop instructions if a clearance pattern is detected
+        /// 
+        /// The following patterns are currently detected:
+        ///     [-], [+]
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        private DILInstruction[] IsClearanceLoop(int index)
+        {
+            var loopInstructions = GetLoopInstructions(index);
+            if (loopInstructions.Length == 1) // [-] or [+]
+            {
+                if (loopInstructions[0] == DILInstruction.Dec || loopInstructions[0] == DILInstruction.Inc)
+                {
+                    return loopInstructions;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -217,6 +303,13 @@ namespace YABFcompiler
             return changes.TotalNumberOfChanges - 1;
         }
 
+        /// <summary>
+        /// Returns the index of the EndLoop for the given StartLoop
+        /// 
+        /// Returns null if a matching EndLoop is not found
+        /// </summary>
+        /// <param name="index">The index of the StartLoop instruction</param>
+        /// <returns></returns>
         private int? GetNextClosingLoopIndex(int index)
         {
             int stack = 0;
@@ -316,6 +409,14 @@ namespace YABFcompiler
                     }
                     break;
             }
+        }
+
+        private void AssignValue(ILGenerator ilg, int value = 1)
+        {
+            ilg.Emit(OpCodes.Ldloc, array);
+            ilg.Emit(OpCodes.Ldloc, ptr);
+            ilg.Emit(OpCodes.Ldc_I4, value);
+            ilg.Emit(OpCodes.Stelem_I4);
         }
 
         private void Increment(ILGenerator ilg, int step = 1)
