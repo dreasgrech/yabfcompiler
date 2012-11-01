@@ -31,6 +31,11 @@ namespace YABFcompiler
      * Examples: 
      *      ++--+ is grouped as a single Inc(1) and -+-- is grouped as a single Dec(2)
      *      ><<><< is grouped as a single DecPtr(2) and >><>> is grouped as a single IncPtr(3)
+     *      
+     * Optimization #4:
+     * Some patterns of clearance loops are detected and replaced with Assign(0)
+     * Examples:
+     *      [-]
      */
     internal class Compiler
     {
@@ -128,15 +133,23 @@ namespace YABFcompiler
                 }
                 /* End of Optimization #1 */
 
-                // If it's a loop instruction, emit the it without any optimizations
                 if (instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)
                 {
-                    IEnumerable<DILInstruction> infiniteLoop;
-                    if (instruction == DILInstruction.StartLoop && (infiniteLoop = IsInfiniteLoopPattern(i)) != null)
+                    /* Start of Optimization #4*/
+                    IEnumerable<DILInstruction> loopInstructions;
+                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsClearanceLoop(i)) != null)
+                    {
+                        AssignValue(ilg, 0);
+                        i += loopInstructions.Count() + 1;
+                        continue;
+                    }
+                    /* End of Optimization #4*/
+                    
+                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsInfiniteLoopPattern(i)) != null)
                     {
                         if (OnWarning != null)
                         {
-                            OnWarning(this, new CompilationWarningEventArgs("Infinite loop pattern detected at cell {0}: [{1}]", i, String.Concat(infiniteLoop)));
+                            OnWarning(this, new CompilationWarningEventArgs("Infinite loop pattern detected at cell {0}: [{1}]", i, String.Concat(loopInstructions)));
                         }
                     }
 
@@ -239,6 +252,25 @@ namespace YABFcompiler
             var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
             return Instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
         } 
+
+        /// <summary>
+        /// Returns the loop instructions if a clearance pattern is detected
+        /// 
+        /// The following patterns are currently detected:
+        ///     [-]
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        private DILInstruction[] IsClearanceLoop(int index)
+        {
+            var loopInstructions = GetLoopInstructions(index);
+            if (loopInstructions.Length == 1 && loopInstructions[0] == DILInstruction.Dec) // [-]
+            {
+                return loopInstructions;
+            }
+
+            return null;
+        }
 
         /// <summary>
         /// Used for Optimization #3.
@@ -374,6 +406,14 @@ namespace YABFcompiler
                     }
                     break;
             }
+        }
+
+        private void AssignValue(ILGenerator ilg, int value = 1)
+        {
+            ilg.Emit(OpCodes.Ldloc, array);
+            ilg.Emit(OpCodes.Ldloc, ptr);
+            ilg.Emit(OpCodes.Ldc_I4, value);
+            ilg.Emit(OpCodes.Stelem_I4);
         }
 
         private void Increment(ILGenerator ilg, int step = 1)

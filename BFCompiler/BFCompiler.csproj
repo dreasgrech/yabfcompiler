@@ -55,6 +55,7 @@
     <Compile Include="Compiler.cs" />
     <Compile Include="DILInstruction.cs" />
     <Compile Include="Exceptions\UnknownLanguageException.cs" />
+    <Compile Include="LanguageParsers\CustomLanguageParser.cs" />
     <Compile Include="LanguageParsers\OokParser.cs" />
     <Compile Include="LanguageParsers\ShortOokParser.cs" />
     <Compile Include="MatchingOperationChanges.cs" />

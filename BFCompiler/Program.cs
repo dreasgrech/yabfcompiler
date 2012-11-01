@@ -12,6 +12,7 @@ namespace YABFcompiler
         private static OptionSet options;
 
         private static string option_filename;
+        private static string option_customLanguage;
         private static CompilationOptions option_compilationOptions = 0;
 
         private static void Main(string[] args)
@@ -63,12 +64,19 @@ namespace YABFcompiler
             var fileInfo = new FileInfo(filename);
             Parser parser;
 
-            switch (fileInfo.Extension.Substring(1).ToLower()) // remove the period.
+            if (!String.IsNullOrEmpty(option_customLanguage))
             {
-                case "bf": parser = new BrainfuckParser(); break;
-                case "ook": parser = new OokParser(); break;
-                case "sook": parser = new ShortOokParser(); break;
-                default: throw new UnknownLanguageException();
+                parser = new CustomLanguageParser(File.ReadAllLines(option_customLanguage));
+            }
+            else
+            {
+                switch (fileInfo.Extension.Substring(1).ToLower()) // remove the period.
+                {
+                    case "bf": parser = new BrainfuckParser(); break;
+                    case "ook": parser = new OokParser(); break;
+                    case "sook": parser = new ShortOokParser(); break;
+                    default: throw new UnknownLanguageException();
+                }
             }
 
             return new Compiler(parser.GenerateDIL(code), option_compilationOptions);
@@ -93,6 +101,7 @@ namespace YABFcompiler
             options = new OptionSet
                           {
                               {"d", "Debug mode", v => option_compilationOptions |= CompilationOptions.DebugMode},
+                              {"l|language=", "Custom language", v => option_customLanguage = v},
                               {"?|h|help", "Show help", v => { status = false; }},
                               {"<>", v => option_filename = v}
                           };
