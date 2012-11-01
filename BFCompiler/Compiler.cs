@@ -43,13 +43,15 @@ namespace YABFcompiler
         private LocalBuilder array;
         private Stack <Label> loopStack;
         private DILInstruction previousInstruction;
+        private Dictionary<DILInstruction, int> operations = new Dictionary<DILInstruction, int>();
+        private Stack<DILInstruction> whileLoopStack = new Stack<DILInstruction>();
 
         /// <summary>
         /// How many times must an Input or Output operation be repeated before it's put into a for-loop
         /// 
         /// This constant is used for Optimization #2.
         /// </summary>
-        private const int ThresholdForLoopIntroduction = 1;
+        private const int ThresholdForLoopIntroduction = 4;
 
         /// <summary>
         /// The size of the array domain for brainfuck to work in
@@ -60,6 +62,18 @@ namespace YABFcompiler
         {
             Instructions = instructions.ToArray();
             Options = options;
+        }
+
+        public int AddOperationInList(DILInstruction instruction, int step = 1)
+        {
+            if (operations.ContainsKey(instruction))
+            {
+                operations[instruction] += step;
+                return operations[instruction];
+            }
+
+            operations.Add(instruction, step);
+            return step;
         }
 
         public void Compile(string filename)
@@ -73,6 +87,9 @@ namespace YABFcompiler
             loopStack = new Stack<Label>();
 
             var forLoopSpaceOptimizationStack = new Stack<ILForLoop>();
+
+            int ptrIndex = 0;
+            var domain = new int[300000];
 
             DILInstruction? areLoopOperationsBalanced;
             if ((areLoopOperationsBalanced = AreLoopOperationsBalanced()) != null)
@@ -98,8 +115,21 @@ namespace YABFcompiler
                 /* Start of Optimization #3 */
                 if ((instruction == DILInstruction.Inc || instruction == DILInstruction.Dec))
                 {
-                    var changes = CompactOppositeOperations(i, ilg, Increment, Decrement);
-                    i += changes;
+                    //var changes = CompactOppositeOperations(i, ilg, Increment, Decrement);
+                    var cs = GetMatchingOperationChanges(i, ~instruction);
+                    if (instruction < 0)
+                    {
+                        cs.ChangesResult = -cs.ChangesResult;
+                    }
+
+                    var res = cs.ChangesResult;
+
+                    domain[ptrIndex] += res;
+                    AssignValue(ilg, ptrIndex, domain[ptrIndex]);
+
+                    i += cs.TotalNumberOfChanges - 1;
+                    AddOperationInList(instruction, cs.TotalNumberOfChanges);
+                    //domain[i] += instruction > 0 ? changes + 1 : -(changes + 1);
                     continue;
                 }
 
@@ -107,6 +137,8 @@ namespace YABFcompiler
                 {
                     var changes = CompactOppositeOperations(i, ilg, IncrementPtr, DecrementPtr);
                     i += changes;
+                    AddOperationInList(instruction, changes + 1);
+                    ptrIndex += instruction > 0 ? changes + 1 : -(changes + 1);
                     continue;
                 }
                 /* End of Optimization #3 */
@@ -131,6 +163,15 @@ namespace YABFcompiler
                 // If it's a loop instruction, emit the it without any optimizations
                 if (instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)
                 {
+                    if (instruction == DILInstruction.EndLoop)
+                    {
+                        whileLoopStack.Pop();
+                    } else
+                    {
+                        whileLoopStack.Push(DILInstruction.StartLoop);
+                    }
+
+                    AddOperationInList(instruction);
                     IEnumerable<DILInstruction> infiniteLoop;
                     if (instruction == DILInstruction.StartLoop && (infiniteLoop = IsInfiniteLoopPattern(i)) != null)
                     {
@@ -183,6 +224,15 @@ namespace YABFcompiler
             assembly.DynamicAssembly.Save(String.Format("{0}.exe", filename));
         }
 
+        /// <summary>
+        /// Returns true if the current operation is part of a loop
+        /// </summary>
+        /// <returns></returns>
+        private bool AreWeInALoop()
+        {
+            return whileLoopStack.Count > 0;
+        }
+
         private DILInstruction? AreLoopOperationsBalanced()
         {
             int totalStartLoopOperations = Instructions.Where(instruction => instruction == DILInstruction.StartLoop).Count(),
@@ -200,11 +250,15 @@ namespace YABFcompiler
 
             return DILInstruction.EndLoop;
         }
-
+        
+        /// <summary>
+        /// Returns the instructions the loop contains if an infinite loop pattern is detected
+        /// </summary>
+        /// <param name="index">The index of the StartLoop instruction</param>
+        /// <returns></returns>
         private IEnumerable<DILInstruction> IsInfiniteLoopPattern(int index)
         {
-            var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
-            var loopInstructions = Instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
+            var loopInstructions = GetLoopInstructions(index);
             
             if (loopInstructions.Length == 0) // [] can be an infinite loop if it starts on a cell which is not 0, otherwise it's skipped
             {
@@ -224,6 +278,17 @@ namespace YABFcompiler
 
             return null;
         }
+
+        /// <summary>
+        /// Returns the instructions the loop contains
+        /// </summary>
+        /// <param name="index">The index of the StartLoop instruction</param>
+        /// <returns></returns>
+        private DILInstruction[] GetLoopInstructions(int index)
+        {
+            var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
+            return Instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
+        } 
 
         /// <summary>
         /// Used for Optimization #3.
@@ -253,6 +318,13 @@ namespace YABFcompiler
             return changes.TotalNumberOfChanges - 1;
         }
 
+        /// <summary>
+        /// Returns the index of the EndLoop for the given StartLoop
+        /// 
+        /// Returns null if a matching EndLoop is not found
+        /// </summary>
+        /// <param name="index">The index of the StartLoop instruction</param>
+        /// <returns></returns>
         private int? GetNextClosingLoopIndex(int index)
         {
             int stack = 0;
@@ -352,6 +424,15 @@ namespace YABFcompiler
                     }
                     break;
             }
+        }
+
+        private void AssignValue(ILGenerator ilg, int index, int value = 1)
+        {
+            ilg.Emit(OpCodes.Ldloc, array);
+            //ilg.Emit(OpCodes.Ldc_I4, index);
+            ilg.Emit(OpCodes.Ldloc, ptr);
+            ilg.Emit(OpCodes.Ldc_I4, value);
+            ilg.Emit(OpCodes.Stelem_I4);
         }
 
         private void Increment(ILGenerator ilg, int step = 1)
