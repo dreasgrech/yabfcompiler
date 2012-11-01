@@ -49,7 +49,7 @@ namespace YABFcompiler
         /// 
         /// This constant is used for Optimization #2.
         /// </summary>
-        private const int ThresholdForLoopIntroduction = 1;
+        private const int ThresholdForLoopIntroduction = 4;
 
         /// <summary>
         /// The size of the array domain for brainfuck to work in
@@ -119,8 +119,8 @@ namespace YABFcompiler
                  *  completely ignore the loops and carry on.
                  */
                 if (
-                    (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop) //asdasd
-                    || (instruction == DILInstruction.StartLoop && i == 0) //asd22
+                    (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop) 
+                    || (instruction == DILInstruction.StartLoop && i == 0) 
                     )
                 {
                     i = nextEndLoopInstructionIndex.Value;
@@ -201,11 +201,15 @@ namespace YABFcompiler
             return DILInstruction.EndLoop;
         }
 
+        /// <summary>
+        /// Returns the instructions the loop contains if an infinite loop pattern is detected
+        /// </summary>
+        /// <param name="index">The index of the StartLoop instruction</param>
+        /// <returns></returns>
         private IEnumerable<DILInstruction> IsInfiniteLoopPattern(int index)
         {
-            var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
-            var loopInstructions = Instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
-            
+            var loopInstructions = GetLoopInstructions(index);
+
             if (loopInstructions.Length == 0) // [] can be an infinite loop if it starts on a cell which is not 0, otherwise it's skipped
             {
                 return loopInstructions;
@@ -218,12 +222,23 @@ namespace YABFcompiler
             //    var containsOnlyPtrMovements = loopInstructions.Length - numberOfPtrMovements == 0;
             //    if (containsOnlyPtrMovements)
             //    {
-                    
+
             //    }
             //}
 
             return null;
         }
+
+        /// <summary>
+        /// Returns the instructions the loop contains
+        /// </summary>
+        /// <param name="index">The index of the StartLoop instruction</param>
+        /// <returns></returns>
+        private DILInstruction[] GetLoopInstructions(int index)
+        {
+            var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
+            return Instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
+        } 
 
         /// <summary>
         /// Used for Optimization #3.
@@ -253,6 +268,13 @@ namespace YABFcompiler
             return changes.TotalNumberOfChanges - 1;
         }
 
+        /// <summary>
+        /// Returns the index of the EndLoop for the given StartLoop
+        /// 
+        /// Returns null if a matching EndLoop is not found
+        /// </summary>
+        /// <param name="index">The index of the StartLoop instruction</param>
+        /// <returns></returns>
         private int? GetNextClosingLoopIndex(int index)
         {
             int stack = 0;
