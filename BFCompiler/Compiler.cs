@@ -111,28 +111,28 @@ namespace YABFcompiler
                 /* Start of Optimization #3 */
                 if ((instruction == DILInstruction.Inc || instruction == DILInstruction.Dec))
                 {
-                    //if (AreWeInALoop())
-                    //{
+                    if (AreWeInALoop())
+                    {
                         var changes = CompactOppositeOperations(i, ilg, Increment, Decrement);
                         i += changes;
                         continue;
-                    //}
+                    }
 
-                    //i += CalculateSimpleWalkResults(ilg, i) - 1;
+                    i += CalculateSimpleWalkResults(ilg, i) - 1;
                     continue;
                 }
 
                 if (instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr)
                 {
-                    //if (AreWeInALoop())
-                    //{
+                    if (AreWeInALoop())
+                    {
                         var changes = CompactOppositeOperations(i, ilg, IncrementPtr, DecrementPtr);
                         i += changes;
                         continue;
-                    //}
+                    }
 
-                    //i += CalculateSimpleWalkResults(ilg, i) - 1;
-                    //continue;
+                    i += CalculateSimpleWalkResults(ilg, i) - 1;
+                    continue;
                 }
                 /* End of Optimization #3 */
 
@@ -158,13 +158,15 @@ namespace YABFcompiler
                     IEnumerable<DILInstruction> loopInstructions;
 
                     /* Start of Optimization #4*/
-                    //if (instruction == DILInstruction.StartLoop && (loopInstructions = IsClearanceLoop(i)) != null)
-                    //{
-                    //    AssignValue(ilg, 0);
-                    //    i += loopInstructions.Count() + 1;
-                    //    continue;
-                    //}
-
+                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsClearanceLoop(i)) != null)
+                    {
+                        if (!AreWeInALoop())
+                        {
+                            AssignValue(ilg, 0);
+                            i += loopInstructions.Count() + 1;
+                            continue;
+                        }
+                    }
                     /* End of Optimization #4*/
 
                     if (instruction == DILInstruction.EndLoop)
@@ -325,7 +327,7 @@ namespace YABFcompiler
             return null;
         }
 
-        public int AddOperationToDomain(SortedDictionary<uint, int> domain, uint index, int step = 1)
+        public int AddOperationToDomain(SortedDictionary<int, int> domain, int index, int step = 1)
         {
             if (domain.ContainsKey(index))
             {
@@ -337,10 +339,17 @@ namespace YABFcompiler
             return step;
         }
 
+        /// <summary>
+        /// TODO: Need to make it work for when the ptr goes below 0
+        /// </summary>
+        /// <param name="instructions"></param>
+        /// <param name="index"></param>
+        /// <param name="stopWalking"></param>
+        /// <returns></returns>
         private WalkResults SimpleWalk(IEnumerable<DILInstruction> instructions, int index, int stopWalking)
         {
-            uint ptr = 0, furthestPtrPosition = 0;
-            var domain = new SortedDictionary<uint, int>();
+            int ptr = 0;
+            var domain = new SortedDictionary<int, int>();
 
             var ins = instructions.Skip(index).Take(stopWalking- index);
 
@@ -353,8 +362,6 @@ namespace YABFcompiler
                     case DILInstruction.Inc: AddOperationToDomain(domain, ptr); break;
                     case DILInstruction.Dec: AddOperationToDomain(domain, ptr, -1); break;
                 }
-
-                furthestPtrPosition = Math.Max(furthestPtrPosition, ptr);
             }
 
             return new WalkResults(domain, ptr, ins.Count());
@@ -366,11 +373,18 @@ namespace YABFcompiler
             int whereToStop = Math.Min(Math.Min(GetNextInstructionIndex(index, DILInstruction.StartLoop) ?? end, GetNextInstructionIndex(index, DILInstruction.Input) ?? end), GetNextInstructionIndex(index, DILInstruction.Output) ?? end);
 
             var walkResults = SimpleWalk(Instructions, index, whereToStop);
+
+            int ptrPosition = 0;
             foreach (var cell in walkResults.Domain)
             {
-                if (cell.Key != 0)
+                var needToGo = cell.Key - ptrPosition;
+                ptrPosition += needToGo;
+                if (needToGo > 0)
                 {
-                    IncrementPtr(ilg, (int)cell.Key);
+                    IncrementPtr(ilg, needToGo);
+                } else if (cell.Key < 0)
+                {
+                    DecrementPtr(ilg, -needToGo);                    
                 }
 
                 //AssignValue(ilg, cell.Value);
@@ -381,6 +395,23 @@ namespace YABFcompiler
                 else if (cell.Value < 0)
                 {
                     Decrement(ilg, -cell.Value);
+                }
+            }
+
+            /*
+             * If there were no cell changes but the pointer still moved, we need to assign the new position
+             * of the pointer.
+             */
+            if (ptrPosition != walkResults.EndPtrPosition)
+            {
+                var delta = walkResults.EndPtrPosition - ptrPosition;
+                if (delta > 0)
+                {
+                    IncrementPtr(ilg, delta);
+                }
+                else if (delta < 0)
+                {
+                    DecrementPtr(ilg, -delta);
                 }
             }
 
