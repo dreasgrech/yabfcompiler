@@ -178,11 +178,6 @@ namespace YABFcompiler
                         whileLoopStack.Push(DILInstruction.StartLoop);
                     }
 
-                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsSimpleLoop(i)) != null)
-                    {
-                        
-                    }
-                    
                     if (instruction == DILInstruction.StartLoop && (loopInstructions = IsInfiniteLoopPattern(i)) != null)
                     {
                         if (OnWarning != null)
@@ -190,6 +185,16 @@ namespace YABFcompiler
                             OnWarning(this, new CompilationWarningEventArgs("Infinite loop pattern detected at cell {0}: [{1}]", i, String.Concat(loopInstructions)));
                         }
                     }
+
+                    //if (instruction == DILInstruction.StartLoop && (loopInstructions = IsSimpleLoop(i)) != null)
+                    //{
+                    //    //// TODO: Currently working on doing operation walks in simple loops
+                    //    //EmitInstruction(ilg, instruction);
+                    //    //i += CalculateSimpleWalkResults(ilg, i + 1);
+
+                    //    //continue;
+
+                    //}
 
                     EmitInstruction(ilg, instruction);
                     continue;
@@ -298,6 +303,13 @@ namespace YABFcompiler
             return null;
         }
 
+        /// <summary>
+        /// Returns the operations contained within the loop is the loop is a simple loop
+        /// 
+        /// A simple loop doesn't contain any input or out, and it also doesn't contain nested loop
+        /// A simple loop also returns to the starting position after execution.  Meaning that the position of StartLoop is equal to the position of EndLoop
+        /// </summary>
+        /// <returns></returns>
         private DILInstruction[] IsSimpleLoop(int index)
         {
             // TODO: Continue working on this one
@@ -316,12 +328,14 @@ namespace YABFcompiler
             int totalIncPtrs = loopInstructions.Count(i => i == DILInstruction.IncPtr),
                 totalDecPtrs = loopInstructions.Count(i => i == DILInstruction.DecPtr);
 
-            var returnsToStartLoopPosition = totalDecPtrs - totalIncPtrs == 0;
+            var returnsToStartLoopPosition = totalDecPtrs == totalIncPtrs;
 
             if (!returnsToStartLoopPosition)
             {
                 return null;
             }
+
+            return loopInstructions;
 
             var x = returnsToStartLoopPosition;
             return null;
@@ -370,7 +384,9 @@ namespace YABFcompiler
         private int CalculateSimpleWalkResults(ILGenerator ilg, int index)
         {
             var end = Instructions.Length;
-            int whereToStop = Math.Min(Math.Min(GetNextInstructionIndex(index, DILInstruction.StartLoop) ?? end, GetNextInstructionIndex(index, DILInstruction.Input) ?? end), GetNextInstructionIndex(index, DILInstruction.Output) ?? end);
+            int whereToStop = Math.Min(Math.Min(
+                Math.Min(GetNextInstructionIndex(index, DILInstruction.StartLoop) ?? end, GetNextInstructionIndex(index, DILInstruction.Input) ?? end),
+                GetNextInstructionIndex(index, DILInstruction.Output) ?? end), GetNextInstructionIndex(index, DILInstruction.EndLoop) ?? end);
 
             var walkResults = SimpleWalk(Instructions, index, whereToStop);
 
