@@ -45,20 +45,6 @@ namespace YABFcompiler
      */
     public class Compiler
     {
-        public Parser Parser { get; private set; }
-        public CompilationOptions Options { get; private set; }
-        private DILInstruction[] Instructions { get; set; }
-
-        private readonly MethodInfo consoleWriteMethodInfo = typeof(Console).GetMethod("Write", new[] { typeof(char) });
-        private readonly MethodInfo consoleReadMethodInfo = typeof(Console).GetMethod("Read");
-
-        public event EventHandler<CompilationWarningEventArgs> OnWarning;
-
-        private LocalBuilder ptr;
-        private LocalBuilder array;
-        private Stack<Label> loopStack;
-        private DILInstruction previousInstruction;
-        private readonly Stack<DILInstruction> whileLoopStack = new Stack<DILInstruction>();
 
         /// <summary>
         /// How many times must an Input or Output operation be repeated before it's put into a for-loop
@@ -72,6 +58,21 @@ namespace YABFcompiler
         /// </summary>
         private const int DomainSize = 0x493e0;
 
+        public Parser Parser { get; private set; }
+        public CompilationOptions Options { get; private set; }
+
+        private DILInstruction[] instructions;
+        private readonly MethodInfo consoleWriteMethodInfo = typeof(Console).GetMethod("Write", new[] { typeof(char) });
+        private readonly MethodInfo consoleReadMethodInfo = typeof(Console).GetMethod("Read");
+
+        public event EventHandler<CompilationWarningEventArgs> OnWarning;
+
+        private LocalBuilder ptr;
+        private LocalBuilder array;
+        private Stack<Label> loopStack;
+        private DILInstruction previousInstruction;
+        private readonly Stack<DILInstruction> whileLoopStack = new Stack<DILInstruction>();
+
         public Compiler(Parser parser, CompilationOptions options = 0)
         {
             Parser = parser;
@@ -84,7 +85,7 @@ namespace YABFcompiler
         /// <returns></returns>
         public string Compile(string filename)
         {
-            Instructions = Parser.GenerateDIL(File.ReadAllText(filename)).ToArray();
+            instructions = Parser.GenerateDIL(File.ReadAllText(filename)).ToArray();
 
             var assembly = CreateAssemblyAndEntryPoint(filename);
             ILGenerator ilg = assembly.MainMethod.GetILGenerator();
@@ -102,12 +103,12 @@ namespace YABFcompiler
                 throw new InstructionNotFoundException(String.Format("Expected to find an {0} instruction but didn't.", (~areLoopOperationsBalanced.Value).ToString()));
             }
 
-            for (int i = 0; i < Instructions.Length; i++)
+            for (int i = 0; i < instructions.Length; i++)
             {
-                var instruction = Instructions[i];
+                var instruction = instructions[i];
                 if (i > 0)
                 {
-                    previousInstruction = Instructions[i - 1];
+                    previousInstruction = instructions[i - 1];
                 }
 
                 // If we're in debug mode, just emit the instruction as is and continue
@@ -271,8 +272,8 @@ namespace YABFcompiler
         /// </summary>
         private DILInstruction? AreLoopOperationsBalanced()
         {
-            int totalStartLoopOperations = Instructions.Where(instruction => instruction == DILInstruction.StartLoop).Count(),
-                totalEndLoopOperations = Instructions.Where(instruction => instruction == DILInstruction.EndLoop).Count();
+            int totalStartLoopOperations = instructions.Where(instruction => instruction == DILInstruction.StartLoop).Count(),
+                totalEndLoopOperations = instructions.Where(instruction => instruction == DILInstruction.EndLoop).Count();
 
             if (totalStartLoopOperations == totalEndLoopOperations)
             {
@@ -395,12 +396,12 @@ namespace YABFcompiler
 
         private int CalculateSimpleWalkResults(ILGenerator ilg, int index)
         {
-            var end = Instructions.Length;
+            var end = instructions.Length;
             int whereToStop = Math.Min(Math.Min(
                 Math.Min(GetNextInstructionIndex(index, DILInstruction.StartLoop) ?? end, GetNextInstructionIndex(index, DILInstruction.Input) ?? end),
                 GetNextInstructionIndex(index, DILInstruction.Output) ?? end), GetNextInstructionIndex(index, DILInstruction.EndLoop) ?? end);
 
-            var walkResults = SimpleWalk(Instructions, index, whereToStop);
+            var walkResults = SimpleWalk(instructions, index, whereToStop);
 
             int ptrPosition = 0;
             foreach (var cell in walkResults.Domain)
@@ -455,7 +456,7 @@ namespace YABFcompiler
         private DILInstruction[] GetLoopInstructions(int index)
         {
             var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
-            return Instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
+            return instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
         }
 
         /// <summary>
@@ -486,7 +487,7 @@ namespace YABFcompiler
         /// <returns></returns>
         private int CompactOppositeOperations(int index, ILGenerator ilg, Action<ILGenerator, int> positiveOperation, Action<ILGenerator, int> negativeOperation)
         {
-            var instruction = Instructions[index];
+            var instruction = instructions[index];
             var changes = GetMatchingOperationChanges(index);
             if (instruction < 0)
             {
@@ -519,14 +520,14 @@ namespace YABFcompiler
         {
             int stack = 0;
 
-            for (int i = index + 1; i < Instructions.Length; i++)
+            for (int i = index + 1; i < instructions.Length; i++)
             {
-                if (Instructions[i] == DILInstruction.StartLoop)
+                if (instructions[i] == DILInstruction.StartLoop)
                 {
                     stack += 1;
                 }
 
-                if (Instructions[i] == DILInstruction.EndLoop)
+                if (instructions[i] == DILInstruction.EndLoop)
                 {
                     if (stack > 0)
                     {
@@ -543,9 +544,9 @@ namespace YABFcompiler
 
         private int? GetNextInstructionIndex(int index, DILInstruction instruction)
         {
-            for (int i = index; i < Instructions.Length; i++)
+            for (int i = index; i < instructions.Length; i++)
             {
-                if (Instructions[i] == instruction)
+                if (instructions[i] == instruction)
                 {
                     return i;
                 }
@@ -557,19 +558,19 @@ namespace YABFcompiler
         private MatchingOperationChanges GetMatchingOperationChanges(int index)
         {
             int total = 0, totalNumberOfChanges = 0;
-            DILInstruction currentInstruction = Instructions[index],
+            DILInstruction currentInstruction = instructions[index],
                            matchingInstruction = ~currentInstruction;
 
-            for (int i = index; i < Instructions.Length; i++)
+            for (int i = index; i < instructions.Length; i++)
             {
-                if (Instructions[i] == matchingInstruction || Instructions[i] == currentInstruction)
+                if (instructions[i] == matchingInstruction || instructions[i] == currentInstruction)
                 {
-                    total += Instructions[i] == Instructions[index] ? 1 : -1;
+                    total += instructions[i] == instructions[index] ? 1 : -1;
                     totalNumberOfChanges++;
                 }
                 else
                 {
-                    i = Instructions.Length;
+                    i = instructions.Length;
                 }
             }
 
@@ -717,11 +718,11 @@ namespace YABFcompiler
         /// <returns></returns>
         private int GetTokenRepetitionTotal(int index)
         {
-            var token = Instructions[index];
+            var token = instructions[index];
             int total = 0;
-            for (int i = index; i < Instructions.Length; i++)
+            for (int i = index; i < instructions.Length; i++)
             {
-                if (Instructions[i] == token)
+                if (instructions[i] == token)
                 {
                     total++;
                 }
