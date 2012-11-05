@@ -50,6 +50,7 @@
     <Compile Include="Exceptions\InstructionNotFoundException.cs" />
     <Compile Include="ILConstructs\ILForLoop.cs" />
     <Compile Include="ILGeneratorHelpers.cs" />
+    <Compile Include="Interpreter.cs" />
     <Compile Include="LanguageParsers\BrainfuckParser.cs" />
     <Compile Include="CommandLineArgs\Options.cs" />
     <Compile Include="Compiler.cs" />
@@ -62,6 +63,7 @@
     <Compile Include="Parser.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WalkResults.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

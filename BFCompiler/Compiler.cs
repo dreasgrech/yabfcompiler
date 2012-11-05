@@ -1,5 +1,4 @@
 ﻿
-using YABFcompiler.EventArguments;
 
 namespace YABFcompiler
 {
@@ -9,10 +8,16 @@ namespace YABFcompiler
     using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
+    using EventArguments;
     using Exceptions;
     using ILConstructs;
 
     /*
+     * ASSUMPTIONS
+     * Assumption #1:
+     *  Every cell is initialized with 0
+     *  
+     * OPTIMIZATIONS
      * Optimization #1:
      *  Loops which could never be entered are ignored.
      *  This can happen when either:
@@ -30,7 +35,9 @@ namespace YABFcompiler
      * This optimization groups together sequences of Incs and Decs, and IncPtrs and DecPtrs
      * Examples: 
      *      ++--+ is grouped as a single Inc(1) and -+-- is grouped as a single Dec(2)
+     *      +++--- is eliminated since it's basically a noop
      *      ><<><< is grouped as a single DecPtr(2) and >><>> is grouped as a single IncPtr(3)
+     *      >>><<< is eliminated since it's basically a noop
      *      
      * Optimization #4:
      * Some patterns of clearance loops are detected and replaced with Assign(0)
@@ -46,8 +53,9 @@ namespace YABFcompiler
 
         private LocalBuilder ptr;
         private LocalBuilder array;
-        private Stack <Label> loopStack;
+        private Stack<Label> loopStack;
         private DILInstruction previousInstruction;
+        private Stack<DILInstruction> whileLoopStack = new Stack<DILInstruction>();
 
         /// <summary>
         /// How many times must an Input or Output operation be repeated before it's put into a for-loop
@@ -94,7 +102,7 @@ namespace YABFcompiler
                 }
 
                 // If we're in debug mode, just emit the instruction as is and continue
-                if (OptionEnabled(CompilationOptions.DebugMode)) 
+                if (OptionEnabled(CompilationOptions.DebugMode))
                 {
                     EmitInstruction(ilg, instruction);
                     continue;
@@ -103,15 +111,27 @@ namespace YABFcompiler
                 /* Start of Optimization #3 */
                 if ((instruction == DILInstruction.Inc || instruction == DILInstruction.Dec))
                 {
-                    var changes = CompactOppositeOperations(i, ilg, Increment, Decrement);
-                    i += changes;
+                    if (AreWeInALoop())
+                    {
+                        var changes = CompactOppositeOperations(i, ilg, Increment, Decrement);
+                        i += changes;
+                        continue;
+                    }
+
+                    i += CalculateSimpleWalkResults(ilg, i) - 1;
                     continue;
                 }
 
                 if (instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr)
                 {
-                    var changes = CompactOppositeOperations(i, ilg, IncrementPtr, DecrementPtr);
-                    i += changes;
+                    if (AreWeInALoop())
+                    {
+                        var changes = CompactOppositeOperations(i, ilg, IncrementPtr, DecrementPtr);
+                        i += changes;
+                        continue;
+                    }
+
+                    i += CalculateSimpleWalkResults(ilg, i) - 1;
                     continue;
                 }
                 /* End of Optimization #3 */
@@ -124,8 +144,8 @@ namespace YABFcompiler
                  *  completely ignore the loops and carry on.
                  */
                 if (
-                    (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop) 
-                    || (instruction == DILInstruction.StartLoop && i == 0) 
+                    (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop)
+                    || (instruction == DILInstruction.StartLoop && i == 0)
                     )
                 {
                     i = nextEndLoopInstructionIndex.Value;
@@ -135,16 +155,29 @@ namespace YABFcompiler
 
                 if (instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)
                 {
-                    /* Start of Optimization #4*/
                     IEnumerable<DILInstruction> loopInstructions;
+
+                    /* Start of Optimization #4*/
                     if (instruction == DILInstruction.StartLoop && (loopInstructions = IsClearanceLoop(i)) != null)
                     {
-                        AssignValue(ilg, 0);
-                        i += loopInstructions.Count() + 1;
-                        continue;
+                        if (!AreWeInALoop())
+                        {
+                            AssignValue(ilg, 0);
+                            i += loopInstructions.Count() + 1;
+                            continue;
+                        }
                     }
                     /* End of Optimization #4*/
-                    
+
+                    if (instruction == DILInstruction.EndLoop)
+                    {
+                        whileLoopStack.Pop();
+                    }
+                    else
+                    {
+                        whileLoopStack.Push(DILInstruction.StartLoop);
+                    }
+
                     if (instruction == DILInstruction.StartLoop && (loopInstructions = IsInfiniteLoopPattern(i)) != null)
                     {
                         if (OnWarning != null)
@@ -153,16 +186,30 @@ namespace YABFcompiler
                         }
                     }
 
+                    //if (instruction == DILInstruction.StartLoop && (loopInstructions = IsSimpleLoop(i)) != null)
+                    //{
+                    //    //// TODO: Currently working on doing operation walks in simple loops
+                    //    //EmitInstruction(ilg, instruction);
+                    //    //i += CalculateSimpleWalkResults(ilg, i + 1);
+
+                    //    //continue;
+
+                    //}
+
                     EmitInstruction(ilg, instruction);
                     continue;
                 }
 
-                /* Optimization #2
-                 *      The only instructions that arrive to this point are Input and Output 
-                 */
+                /* The only instructions that arrive to this point are Input and Output  */
 
                 var repetitionTotal = GetTokenRepetitionTotal(i);
-                if (repetitionTotal > ThresholdForLoopIntroduction) // Only introduce a loop if the repetition amount exceeds the threshold
+
+                /* 
+                 * Optimization #2
+                 * 
+                 * Only introduce a loop if the repetition amount exceeds the threshold
+                 */
+                if (repetitionTotal > ThresholdForLoopIntroduction)
                 {
                     ILForLoop now;
                     if (forLoopSpaceOptimizationStack.Count > 0)
@@ -181,7 +228,7 @@ namespace YABFcompiler
                     ilg.EndForLoop(now);
 
                     i += repetitionTotal - 1;
-                } 
+                }
                 else
                 {
                     EmitInstruction(ilg, instruction);
@@ -196,11 +243,25 @@ namespace YABFcompiler
             assembly.DynamicAssembly.Save(String.Format("{0}.exe", filename));
         }
 
+        /// <summary>
+        /// Returns true if the current operation is part of a loop
+        /// </summary>
+        /// <returns></returns>
+        private bool AreWeInALoop()
+        {
+            return whileLoopStack.Count > 0;
+        }
+
+        /// <summary>
+        /// Returns null if the number of StartLoop operations match the number of EndLoop operations
+        /// 
+        /// Otherwise, it returns the operation with the excess total.
+        /// </summary>
         private DILInstruction? AreLoopOperationsBalanced()
         {
             int totalStartLoopOperations = Instructions.Where(instruction => instruction == DILInstruction.StartLoop).Count(),
                 totalEndLoopOperations = Instructions.Where(instruction => instruction == DILInstruction.EndLoop).Count();
-            
+
             if (totalStartLoopOperations == totalEndLoopOperations)
             {
                 return null;
@@ -243,6 +304,138 @@ namespace YABFcompiler
         }
 
         /// <summary>
+        /// Returns the operations contained within the loop is the loop is a simple loop
+        /// 
+        /// A simple loop doesn't contain any input or out, and it also doesn't contain nested loop
+        /// A simple loop also returns to the starting position after execution.  Meaning that the position of StartLoop is equal to the position of EndLoop
+        /// </summary>
+        /// <returns></returns>
+        private DILInstruction[] IsSimpleLoop(int index)
+        {
+            // TODO: Continue working on this one
+            var loopInstructions = GetLoopInstructions(index);
+            bool containsIO = loopInstructions.Any(i =>
+                i == DILInstruction.Input || i == DILInstruction.Output
+                || i == DILInstruction.StartLoop || i == DILInstruction.EndLoop // I'm excluding nested loops for now
+                );
+
+
+            if (containsIO)
+            {
+                return null;
+            }
+
+            int totalIncPtrs = loopInstructions.Count(i => i == DILInstruction.IncPtr),
+                totalDecPtrs = loopInstructions.Count(i => i == DILInstruction.DecPtr);
+
+            var returnsToStartLoopPosition = totalDecPtrs == totalIncPtrs;
+
+            if (!returnsToStartLoopPosition)
+            {
+                return null;
+            }
+
+            return loopInstructions;
+
+            var x = returnsToStartLoopPosition;
+            return null;
+        }
+
+        public int AddOperationToDomain(SortedDictionary<int, int> domain, int index, int step = 1)
+        {
+            if (domain.ContainsKey(index))
+            {
+                domain[index] += step;
+                return domain[index];
+            }
+
+            domain.Add(index, step);
+            return step;
+        }
+
+        /// <summary>
+        /// TODO: Need to make it work for when the ptr goes below 0
+        /// </summary>
+        /// <param name="instructions"></param>
+        /// <param name="index"></param>
+        /// <param name="stopWalking"></param>
+        /// <returns></returns>
+        private WalkResults SimpleWalk(IEnumerable<DILInstruction> instructions, int index, int stopWalking)
+        {
+            int ptr = 0;
+            var domain = new SortedDictionary<int, int>();
+
+            var ins = instructions.Skip(index).Take(stopWalking - index);
+
+            foreach (var instruction in ins)
+            {
+                switch (instruction)
+                {
+                    case DILInstruction.IncPtr: ptr++; break;
+                    case DILInstruction.DecPtr: ptr--; break;
+                    case DILInstruction.Inc: AddOperationToDomain(domain, ptr); break;
+                    case DILInstruction.Dec: AddOperationToDomain(domain, ptr, -1); break;
+                }
+            }
+
+            return new WalkResults(domain, ptr, ins.Count());
+        }
+
+        private int CalculateSimpleWalkResults(ILGenerator ilg, int index)
+        {
+            var end = Instructions.Length;
+            int whereToStop = Math.Min(Math.Min(
+                Math.Min(GetNextInstructionIndex(index, DILInstruction.StartLoop) ?? end, GetNextInstructionIndex(index, DILInstruction.Input) ?? end),
+                GetNextInstructionIndex(index, DILInstruction.Output) ?? end), GetNextInstructionIndex(index, DILInstruction.EndLoop) ?? end);
+
+            var walkResults = SimpleWalk(Instructions, index, whereToStop);
+
+            int ptrPosition = 0;
+            foreach (var cell in walkResults.Domain)
+            {
+                var needToGo = cell.Key - ptrPosition;
+                ptrPosition += needToGo;
+                if (needToGo > 0)
+                {
+                    IncrementPtr(ilg, needToGo);
+                }
+                else if (cell.Key < 0)
+                {
+                    DecrementPtr(ilg, -needToGo);
+                }
+
+                //AssignValue(ilg, cell.Value);
+                if (cell.Value > 0)
+                {
+                    Increment(ilg, cell.Value);
+                }
+                else if (cell.Value < 0)
+                {
+                    Decrement(ilg, -cell.Value);
+                }
+            }
+
+            /*
+             * If there were no cell changes but the pointer still moved, we need to assign the new position
+             * of the pointer.
+             */
+            if (ptrPosition != walkResults.EndPtrPosition)
+            {
+                var delta = walkResults.EndPtrPosition - ptrPosition;
+                if (delta > 0)
+                {
+                    IncrementPtr(ilg, delta);
+                }
+                else if (delta < 0)
+                {
+                    DecrementPtr(ilg, -delta);
+                }
+            }
+
+            return walkResults.TotalInstructionsCovered;
+        }
+
+        /// <summary>
         /// Returns the instructions the loop contains
         /// </summary>
         /// <param name="index">The index of the StartLoop instruction</param>
@@ -251,7 +444,7 @@ namespace YABFcompiler
         {
             var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
             return Instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
-        } 
+        }
 
         /// <summary>
         /// Returns the loop instructions if a clearance pattern is detected
@@ -282,7 +475,7 @@ namespace YABFcompiler
         private int CompactOppositeOperations(int index, ILGenerator ilg, Action<ILGenerator, int> positiveOperation, Action<ILGenerator, int> negativeOperation)
         {
             var instruction = Instructions[index];
-            var changes = GetMatchingOperationChanges(index, ~instruction);
+            var changes = GetMatchingOperationChanges(index);
             if (instruction < 0)
             {
                 changes.ChangesResult = -changes.ChangesResult;
@@ -336,10 +529,26 @@ namespace YABFcompiler
             return null;
         }
 
-        private MatchingOperationChanges GetMatchingOperationChanges(int index, DILInstruction matchingInstruction)
+        private int? GetNextInstructionIndex(int index, DILInstruction instruction)
+        {
+            for (int i = index; i < Instructions.Length; i++)
+            {
+                if (Instructions[i] == instruction)
+                {
+                    return i;
+                }
+            }
+
+            return null;
+        }
+
+
+        private MatchingOperationChanges GetMatchingOperationChanges(int index)
         {
             int total = 0, totalNumberOfChanges = 0;
-            var currentInstruction = Instructions[index];
+            DILInstruction currentInstruction = Instructions[index],
+                           matchingInstruction = ~currentInstruction;
+
             for (int i = index; i < Instructions.Length; i++)
             {
                 if (Instructions[i] == matchingInstruction || Instructions[i] == currentInstruction)
@@ -356,6 +565,7 @@ namespace YABFcompiler
             return new MatchingOperationChanges(total, totalNumberOfChanges);
         }
 
+        #region Instruction emitters
         private void EmitInstruction(ILGenerator ilg, DILInstruction instruction, int value = 1)
         {
             switch (instruction)
@@ -411,6 +621,11 @@ namespace YABFcompiler
             }
         }
 
+        /// <summary>
+        /// Emit instructions to assign an integer constant to the value of the current cell
+        /// </summary>
+        /// <param name="ilg"></param>
+        /// <param name="value"></param>
         private void AssignValue(ILGenerator ilg, int value = 1)
         {
             ilg.Emit(OpCodes.Ldloc, array);
@@ -419,6 +634,9 @@ namespace YABFcompiler
             ilg.Emit(OpCodes.Stelem_I4);
         }
 
+        /// <summary>
+        /// Emit instructions to increment the value of the current cell by an integer constant
+        /// </summary>
         private void Increment(ILGenerator ilg, int step = 1)
         {
             ilg.Emit(OpCodes.Ldloc, array);
@@ -432,6 +650,9 @@ namespace YABFcompiler
             ilg.Emit(OpCodes.Stobj, typeof(char));
         }
 
+        /// <summary>
+        /// Emit instructions to decrement the value of the current cell by an integer constant
+        /// </summary>
         private void Decrement(ILGenerator ilg, int step = 1)
         {
             ilg.Emit(OpCodes.Ldloc, array);
@@ -445,15 +666,22 @@ namespace YABFcompiler
             ilg.Emit(OpCodes.Stobj, typeof(char));
         }
 
+        /// <summary>
+        /// Emit instructions to increment the pointer position by an integer constant
+        /// </summary>
         private void IncrementPtr(ILGenerator ilg, int step = 1)
         {
             ilg.Increment(ptr, step);
         }
 
+        /// <summary>
+        /// Emit instructions to decrement the pointer position by an integer constant
+        /// </summary>
         private void DecrementPtr(ILGenerator ilg, int step = 1)
         {
             ilg.Decrement(ptr, step);
         }
+        #endregion
 
         private AssemblyInfo CreateAssemblyAndEntryPoint(string filename)
         {
@@ -475,6 +703,13 @@ namespace YABFcompiler
             return (Options & option) == option;
         }
 
+        /// <summary>
+        /// Gets the number of repeating tokens
+        /// 
+        /// So, +++-[] will return 3 because of the three consecutive Incs
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
         private int GetTokenRepetitionTotal(int index)
         {
             var token = Instructions[index];
