@@ -79,11 +79,6 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <None Include="Programs\Ook!\andreas.ook">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Programs\Short Ook!\sookiesookie.sook">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

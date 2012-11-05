@@ -49,13 +49,16 @@ namespace YABFcompiler
         public CompilationOptions Options { get; private set; }
         private DILInstruction[] Instructions { get; set; }
 
+        private readonly MethodInfo consoleWriteMethodInfo = typeof(Console).GetMethod("Write", new[] { typeof(char) });
+        private readonly MethodInfo consoleReadMethodInfo = typeof(Console).GetMethod("Read");
+
         public event EventHandler<CompilationWarningEventArgs> OnWarning;
 
         private LocalBuilder ptr;
         private LocalBuilder array;
         private Stack<Label> loopStack;
         private DILInstruction previousInstruction;
-        private Stack<DILInstruction> whileLoopStack = new Stack<DILInstruction>();
+        private readonly Stack<DILInstruction> whileLoopStack = new Stack<DILInstruction>();
 
         /// <summary>
         /// How many times must an Input or Output operation be repeated before it's put into a for-loop
@@ -551,7 +554,6 @@ namespace YABFcompiler
             return null;
         }
 
-
         private MatchingOperationChanges GetMatchingOperationChanges(int index)
         {
             int total = 0, totalNumberOfChanges = 0;
@@ -588,20 +590,14 @@ namespace YABFcompiler
                         ilg.Emit(OpCodes.Ldloc, array);
                         ilg.Emit(OpCodes.Ldloc, ptr);
                         ilg.Emit(OpCodes.Ldelem_U2);
-                        ilg.EmitCall(OpCodes.Call,
-                                     typeof(Console).GetMethods().First(
-                                         m =>
-                                         m.Name == "Write" && m.GetParameters().Length == 1 &&
-                                         m.GetParameters().Any(p => p.ParameterType == typeof(char))),
-                                     new[] { typeof(string) });
-                        // TODO: Seriously find a better way how to invoke this one
+                        ilg.EmitCall(OpCodes.Call, consoleWriteMethodInfo, null);
                     }
                     break;
                 case DILInstruction.Input:
                     {
                         ilg.Emit(OpCodes.Ldloc, array);
                         ilg.Emit(OpCodes.Ldloc, ptr);
-                        ilg.EmitCall(OpCodes.Call, typeof(Console).GetMethod("Read"), null);
+                        ilg.EmitCall(OpCodes.Call, consoleReadMethodInfo, null);
                         ilg.Emit(OpCodes.Conv_U2);
                         ilg.Emit(OpCodes.Stelem_I2);
                     }
@@ -713,9 +709,9 @@ namespace YABFcompiler
         }
 
         /// <summary>
-        /// Gets the number of repeating tokens
+        /// Gets the number of repeating tokens starting from the provided index
         /// 
-        /// So, +++-[] will return 3 because of the three consecutive Incs
+        /// So, +++-[] will return 3 because of the first three consecutive Incs but -+++-[] will return 0.
         /// </summary>
         /// <param name="index"></param>
         /// <returns></returns>
