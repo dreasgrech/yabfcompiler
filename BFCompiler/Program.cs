@@ -2,10 +2,8 @@
 namespace YABFcompiler
 {
     using System;
-    using System.IO;
     using CommandLineArgs;
     using Exceptions;
-    using LanguageParsers;
 
     internal class Program
     {

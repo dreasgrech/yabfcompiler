@@ -1,0 +1,24 @@
+﻿Usage: yabfcompiler.exe [options] <source>
+
+Options:
+  -d                         Debug mode
+  -l, --language=VALUE       Custom language
+  -?, -h, --help             Show help
+
+
+Debug mode compiles the code without any optimizations
+
+Examples:
+
+yabfcompiler.exe code.bf
+yabfcompiler.exe -l languageDefinition.yabfc code.dreas 
+
+An example of a custom language defintion file:
+Inc i+
+Dec i-
+IncPtr p+
+DecPtr p-
+StartLoop {
+EndLoop }
+Input $
+Output >
