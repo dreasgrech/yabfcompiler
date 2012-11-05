@@ -5,7 +5,7 @@ namespace YABFcompiler
     using System.Linq;
     using System.Text.RegularExpressions;
 
-    abstract class Parser
+    public abstract class Parser
     {
         protected Dictionary<string,DILInstruction> AllowedInstructions { get; private set; }
         protected int MinimumTokenLength { get; private set; }
@@ -16,7 +16,12 @@ namespace YABFcompiler
             MinimumTokenLength = instructions.Min(d => d.Key.Length);
         }
 
-        public IEnumerable<string> GetTokens(string source)
+        public IEnumerable<DILInstruction> GenerateDIL(string source)
+        {
+            return GetTokens(source).Select(token => AllowedInstructions[token]);
+        }
+
+        private IEnumerable<string> GetTokens(string source)
         {
             source = source.Replace("\r\n", ""); 
             int index = 0;
@@ -25,11 +30,6 @@ namespace YABFcompiler
             {
                 yield return token;
             }
-        }
-
-        public IEnumerable<DILInstruction> GenerateDIL(string source)
-        {
-            return GetTokens(source).Select(token => AllowedInstructions[token]);
         }
 
         private bool IsTokenAllowed(string token)

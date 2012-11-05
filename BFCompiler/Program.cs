@@ -23,11 +23,11 @@ namespace YABFcompiler
                 return;
             }
 
-            var compiler = GetCompiler(option_filename);
+            var compiler = CompilerFactory.GetCompiler(option_filename, option_compilationOptions, option_customLanguage);
             compiler.OnWarning += compiler_OnWarning;
             try
             {
-                compiler.Compile(Path.GetFileNameWithoutExtension(option_filename));
+                compiler.Compile(option_filename);
             } 
             catch(CompilerException exception)
             {
@@ -58,41 +58,11 @@ namespace YABFcompiler
             Console.ForegroundColor = currentForeground;
         }
 
-        private static Compiler GetCompiler(string filename)
-        {
-            var code = ReadFile(filename);
-            var fileInfo = new FileInfo(filename);
-            Parser parser;
-
-            if (!String.IsNullOrEmpty(option_customLanguage))
-            {
-                parser = new CustomLanguageParser(File.ReadAllLines(option_customLanguage));
-            }
-            else
-            {
-                switch (fileInfo.Extension.Substring(1).ToLower()) // remove the period.
-                {
-                    case "bf": parser = new BrainfuckParser(); break;
-                    case "ook": parser = new OokParser(); break;
-                    case "sook": parser = new ShortOokParser(); break;
-                    default: throw new UnknownLanguageException();
-                }
-            }
-
-            return new Compiler(parser.GenerateDIL(code), option_compilationOptions);
-
-        }
-
         private static void ShowHelp(OptionSet options)
         {
             Console.WriteLine("Usage: {0} [options] <source>\n", AppDomain.CurrentDomain.FriendlyName);
             Console.WriteLine("Options:");
             options.WriteOptionDescriptions(Console.Out);
-        }
-
-        private static string ReadFile(string file)
-        {
-            return File.ReadAllText(file);
         }
 
         private static bool HandleCommandLineArgs(string[] args)

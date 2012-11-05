@@ -8,8 +8,8 @@ namespace YABFcompiler
     /// 
     /// I'm using the bitwise complement operator to denote opposites
     /// </summary>
-    [Flags] 
-    enum DILInstruction
+    [Flags]
+    public enum DILInstruction
     {
         IncPtr = 0x1,
         DecPtr = ~IncPtr,

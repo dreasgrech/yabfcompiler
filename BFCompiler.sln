@@ -5,6 +5,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BFCompiler", "BFCompiler\BF
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestRun", "TestRun\TestRun.csproj", "{16BCCADE-621D-41E2-B591-0159343811C8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompilerTests", "CompilerTests\CompilerTests.csproj", "{D9266DA8-292E-4886-AFFD-24481F4DE6FA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -19,6 +21,10 @@ Global
 		{16BCCADE-621D-41E2-B591-0159343811C8}.Debug|x86.Build.0 = Debug|x86
 		{16BCCADE-621D-41E2-B591-0159343811C8}.Release|x86.ActiveCfg = Release|x86
 		{16BCCADE-621D-41E2-B591-0159343811C8}.Release|x86.Build.0 = Release|x86
+		{D9266DA8-292E-4886-AFFD-24481F4DE6FA}.Debug|x86.ActiveCfg = Debug|x86
+		{D9266DA8-292E-4886-AFFD-24481F4DE6FA}.Debug|x86.Build.0 = Debug|x86
+		{D9266DA8-292E-4886-AFFD-24481F4DE6FA}.Release|x86.ActiveCfg = Release|x86
+		{D9266DA8-292E-4886-AFFD-24481F4DE6FA}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,5 +1,4 @@
 ﻿
-
 namespace YABFcompiler
 {
     using System;
@@ -44,10 +43,11 @@ namespace YABFcompiler
      * Examples:
      *      [-], [+]
      */
-    internal class Compiler
+    public class Compiler
     {
-        public DILInstruction[] Instructions { get; private set; }
+        public Parser Parser { get; private set; }
         public CompilationOptions Options { get; private set; }
+        private DILInstruction[] Instructions { get; set; }
 
         public event EventHandler<CompilationWarningEventArgs> OnWarning;
 
@@ -69,14 +69,20 @@ namespace YABFcompiler
         /// </summary>
         private const int DomainSize = 0x493e0;
 
-        public Compiler(IEnumerable<DILInstruction> instructions, CompilationOptions options = 0)
+        public Compiler(Parser parser, CompilationOptions options = 0)
         {
-            Instructions = instructions.ToArray();
+            Parser = parser;
             Options = options;
         }
 
-        public void Compile(string filename)
+        /// <summary>
+        /// Returns the location of the compiled assembly
+        /// </summary>
+        /// <returns></returns>
+        public string Compile(string filename)
         {
+            Instructions = Parser.GenerateDIL(File.ReadAllText(filename)).ToArray();
+
             var assembly = CreateAssemblyAndEntryPoint(filename);
             ILGenerator ilg = assembly.MainMethod.GetILGenerator();
 
@@ -240,7 +246,10 @@ namespace YABFcompiler
             Type t = assembly.MainClass.CreateType();
             assembly.DynamicAssembly.SetEntryPoint(assembly.MainMethod, PEFileKinds.ConsoleApplication);
 
-            assembly.DynamicAssembly.Save(String.Format("{0}.exe", filename));
+            var compiledAssemblyFile = String.Format("{0}.exe", Path.GetFileNameWithoutExtension(filename));
+            assembly.DynamicAssembly.Save(compiledAssemblyFile);
+
+            return compiledAssemblyFile;
         }
 
         /// <summary>
@@ -690,7 +699,7 @@ namespace YABFcompiler
             AppDomain ad = AppDomain.CurrentDomain;
             AssemblyBuilder ab = ad.DefineDynamicAssembly(an, AssemblyBuilderAccess.Save);
 
-            ModuleBuilder mb = ab.DefineDynamicModule(an.Name, String.Format("{0}.exe", filename), true);
+            ModuleBuilder mb = ab.DefineDynamicModule(an.Name, String.Format("{0}.exe", Path.GetFileNameWithoutExtension(filename)), true);
 
             TypeBuilder tb = mb.DefineType("Program", TypeAttributes.Public | TypeAttributes.Class);
             MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Public | MethodAttributes.Static, null, null);

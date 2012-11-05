@@ -1,0 +1,8 @@
+﻿Inc i+
+Dec i-
+IncPtr p+
+DecPtr p-
+StartLoop {
+EndLoop }
+Input $
+Output >

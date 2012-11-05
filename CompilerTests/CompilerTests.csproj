@@ -5,11 +5,11 @@
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{98CFBD40-B4CF-4C9E-A8A9-069A17857ED6}</ProjectGuid>
+    <ProjectGuid>{D9266DA8-292E-4886-AFFD-24481F4DE6FA}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>YABFcompiler</RootNamespace>
-    <AssemblyName>yabfcompiler</AssemblyName>
+    <RootNamespace>CompilerTests</RootNamespace>
+    <AssemblyName>CompilerTests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
@@ -43,28 +43,50 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyInfo.cs" />
-    <Compile Include="CompilationOptions.cs" />
-    <Compile Include="CompilerFactory.cs" />
-    <Compile Include="EventArguments\CompilationWarningEventArgs.cs" />
-    <Compile Include="Exceptions\CompilerException.cs" />
-    <Compile Include="Exceptions\InstructionNotFoundException.cs" />
-    <Compile Include="ILConstructs\ILForLoop.cs" />
-    <Compile Include="ILGeneratorHelpers.cs" />
-    <Compile Include="Interpreter.cs" />
-    <Compile Include="LanguageParsers\BrainfuckParser.cs" />
-    <Compile Include="CommandLineArgs\Options.cs" />
-    <Compile Include="Compiler.cs" />
-    <Compile Include="DILInstruction.cs" />
-    <Compile Include="Exceptions\UnknownLanguageException.cs" />
-    <Compile Include="LanguageParsers\CustomLanguageParser.cs" />
-    <Compile Include="LanguageParsers\OokParser.cs" />
-    <Compile Include="LanguageParsers\ShortOokParser.cs" />
-    <Compile Include="MatchingOperationChanges.cs" />
-    <Compile Include="Parser.cs" />
+    <Compile Include="ExecutableRunner.cs" />
+    <Compile Include="TestLogging\ConsoleLogger.cs" />
+    <Compile Include="TestLogging\Logger.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="WalkResults.cs" />
+    <Compile Include="RunResults.cs" />
+    <Compile Include="TestRunner.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Programs\Brainfuck\songbeer.bf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Programs\Brainfuck\quine1.bf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Programs\Brainfuck\gameoflife.bf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Programs\Dreas\dreas.yabfc">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Programs\Dreas\pilkington.d">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Programs\Ook!\lenny.ook">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BFCompiler\BFCompiler.csproj">
+      <Project>{98CFBD40-B4CF-4C9E-A8A9-069A17857ED6}</Project>
+      <Name>BFCompiler</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <None Include="Programs\Ook!\andreas.ook">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Programs\Short Ook!\sookiesookie.sook">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
