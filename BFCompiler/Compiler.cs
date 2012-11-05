@@ -87,6 +87,15 @@ namespace YABFcompiler
         {
             instructions = Parser.GenerateDIL(File.ReadAllText(filename)).ToArray();
 
+            /*
+             * Start of advanced walk temp code
+             */
+            var walker = new CodeWalker(instructions);
+            walker.Parse();
+            /*
+             * End of advanced walk temp code
+             */
+
             var assembly = CreateAssemblyAndEntryPoint(filename);
             ILGenerator ilg = assembly.MainMethod.GetILGenerator();
 
@@ -146,19 +155,18 @@ namespace YABFcompiler
                 }
                 /* End of Optimization #3 */
 
-                var nextEndLoopInstructionIndex = GetNextClosingLoopIndex(i);
-
                 /* Start of Optimization #1 
                     If either a) the current instruction is a StartLoop and it's preceeded by an EndLoop or
                               b) the current instruction is the first instruction and it's a StartLoop
-                 *  completely ignore the loops and carry on.
+                 *  completely skip the loop and carry on.
                  */
                 if (
                     (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop)
                     || (instruction == DILInstruction.StartLoop && i == 0)
                     )
                 {
-                    i = nextEndLoopInstructionIndex.Value;
+                    var nextEndLoopInstructionIndex = GetNextClosingLoopIndex(i);
+                    i = nextEndLoopInstructionIndex.Value; // nextEndLoopInstructionIndex will always have a value because we verified the number of StartLoop and EndLoop operations at the beginning
                     continue;
                 }
                 /* End of Optimization #1 */
@@ -369,16 +377,16 @@ namespace YABFcompiler
         /// <summary>
         /// TODO: Need to make it work for when the ptr goes below 0
         /// </summary>
-        /// <param name="instructions"></param>
+        /// <param name="operations"></param>
         /// <param name="index"></param>
         /// <param name="stopWalking"></param>
         /// <returns></returns>
-        private WalkResults SimpleWalk(IEnumerable<DILInstruction> instructions, int index, int stopWalking)
+        private WalkResults SimpleWalk(IEnumerable<DILInstruction> operations, int index, int stopWalking)
         {
             int ptr = 0;
             var domain = new SortedDictionary<int, int>();
 
-            var ins = instructions.Skip(index).Take(stopWalking - index);
+            var ins = operations.Skip(index).Take(stopWalking - index);
 
             foreach (var instruction in ins)
             {

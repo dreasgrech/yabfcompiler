@@ -44,8 +44,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="CodeWalker.cs" />
     <Compile Include="CompilationOptions.cs" />
     <Compile Include="CompilerFactory.cs" />
+    <Compile Include="DIL\InputOp.cs" />
+    <Compile Include="DIL\DILOperation.cs" />
+    <Compile Include="DIL\LoopOp.cs" />
+    <Compile Include="DIL\MemOp.cs" />
+    <Compile Include="DIL\OutputOp.cs" />
+    <Compile Include="DIL\PointerOp.cs" />
     <Compile Include="EventArguments\CompilationWarningEventArgs.cs" />
     <Compile Include="Exceptions\CompilerException.cs" />
     <Compile Include="Exceptions\InstructionNotFoundException.cs" />
