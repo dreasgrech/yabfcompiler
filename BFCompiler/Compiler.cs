@@ -146,19 +146,19 @@ namespace YABFcompiler
                 }
                 /* End of Optimization #3 */
 
-                var nextEndLoopInstructionIndex = GetNextClosingLoopIndex(i);
 
                 /* Start of Optimization #1 
                     If either a) the current instruction is a StartLoop and it's preceeded by an EndLoop or
                               b) the current instruction is the first instruction and it's a StartLoop
-                 *  completely ignore the loops and carry on.
+                 *  completely skip the loops and carry on.
                  */
                 if (
                     (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop)
                     || (instruction == DILInstruction.StartLoop && i == 0)
                     )
                 {
-                    i = nextEndLoopInstructionIndex.Value;
+                    var nextEndLoopInstructionIndex = GetNextClosingLoopIndex(i);
+                    i = nextEndLoopInstructionIndex.Value; // nextEndLoopInstructionIndex will always have a value because we verified the number of StartLoop and EndLoop operations at the beginning
                     continue;
                 }
                 /* End of Optimization #1 */
@@ -333,7 +333,7 @@ namespace YABFcompiler
                 );
 
 
-            if (containsIO)
+            if (containsIO /* and nested loops */)
             {
                 return null;
             }
