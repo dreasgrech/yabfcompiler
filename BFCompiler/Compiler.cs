@@ -61,6 +61,7 @@ namespace YABFcompiler
      * the assignment being the NULL to the starting position of the loop since that's the 
      * reason why the loop was halted.
      */
+
     public class Compiler
     {
 
@@ -183,45 +184,53 @@ namespace YABFcompiler
 
                 if (instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)
                 {
-                    IEnumerable<DILInstruction> loopInstructions;
-
-                    /* Start of Optimization #4*/
-                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsClearanceLoop(i)) != null)
+                    if (instruction == DILInstruction.StartLoop)
                     {
-                            AssignValue(ilg, 0);
-                            i += loopInstructions.Count() + 1;
-                            continue;
-                    }
-                    /* End of Optimization #4*/
+                        var loop = Loop.Construct(instructions, i);
 
-
-
-                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsInfiniteLoopPattern(i)) != null)
-                    {
-                        if (OnWarning != null)
+                        /* Start of Optimization #4*/
+                        if (loop.IsClearanceLoop())
                         {
-                            OnWarning(this, new CompilationWarningEventArgs("Infinite loop pattern detected at cell {0}: [{1}]", i, String.Concat(loopInstructions)));
-                        }
-                    }
-
-                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsSimpleLoop(i)) != null)
-                    {
-                            // TODO: Currently working on doing operation walks in simple loops
-                            var walkResults = CalculateSimpleWalkResults(i + 1);
-
-                            walkResults.IterateDomain((cellIndex, cellDelta) =>
-                            {
-                                if (cellIndex == 0)
-                                {
-                                    AssignValue(ilg, 0);
-                                    return;
-                                }
-
-                                MultiplyByIndexValue(ilg, cellIndex, cellDelta);
-                            });
-
-                            i += walkResults.TotalInstructionsCovered + 1;
+                            AssignValue(ilg, 0);
+                            i += loop.Instructions.Length + 1;
                             continue;
+                        }
+                        /* End of Optimization #4*/
+
+                        if (loop.IsInfiniteLoopPattern())
+                        {
+                            if (OnWarning != null)
+                            {
+                                OnWarning(this,
+                                          new CompilationWarningEventArgs(
+                                              "Infinite loop pattern detected at cell {0}: [{1}]", i,
+                                              String.Concat(loop.Instructions)));
+                            }
+                        }
+
+                        //var isSimple = loop.IsSimple();
+
+                        /* Start of Optimization #5 */
+                        // TODO: Currently working on Optimization #5 for nested loops
+                        //if (IsSimpleLoop(i) != null) // TODO: needs to be changed to loop.IsSimple()
+                        //{
+                        //    var walkResults = CalculateSimpleWalkResults(i + 1);
+
+                        //    walkResults.IterateDomain((cellIndex, cellDelta) =>
+                        //                                  {
+                        //                                      if (cellIndex == 0)
+                        //                                      {
+                        //                                          AssignValue(ilg, 0);
+                        //                                          return;
+                        //                                      }
+
+                        //                                      MultiplyByIndexValue(ilg, cellIndex, cellDelta);
+                        //                                  });
+
+                        //    i += walkResults.TotalInstructionsCovered + 1;
+                        //    continue;
+                        //}
+                        /* End of Optimization #5 */
                     }
 
                     if (instruction == DILInstruction.EndLoop)
@@ -316,34 +325,8 @@ namespace YABFcompiler
         }
 
         /// <summary>
-        /// Returns the instructions the loop contains if an infinite loop pattern is detected
-        /// </summary>
-        /// <param name="index">The index of the StartLoop instruction</param>
-        /// <returns></returns>
-        private IEnumerable<DILInstruction> IsInfiniteLoopPattern(int index)
-        {
-            var loopInstructions = GetLoopInstructions(index);
-
-            if (loopInstructions.Length == 0) // [] can be an infinite loop if it starts on a cell which is not 0, otherwise it's skipped
-            {
-                return loopInstructions;
-            }
-
-            //var numberOfPtrMovements = loopInstructions.Count(instruction => instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr);
-
-            //if (numberOfPtrMovements > 0)
-            //{
-            //    var containsOnlyPtrMovements = loopInstructions.Length - numberOfPtrMovements == 0;
-            //    if (containsOnlyPtrMovements)
-            //    {
-
-            //    }
-            //}
-
-            return null;
-        }
-
-        /// <summary>
+        /// TODO: This method needs to be replaced with the one in Loop.IsSimple()
+        /// 
         /// Returns the operations contained within the loop is the loop is a simple loop
         /// 
         /// A simple loop doesn't contain any input or out, and it also doesn't contain nested loop
@@ -352,13 +335,11 @@ namespace YABFcompiler
         /// <returns></returns>
         private DILInstruction[] IsSimpleLoop(int index)
         {
-            // TODO: Continue working on this one
             var loopInstructions = GetLoopInstructions(index);
             bool containsIO = loopInstructions.Any(i =>
                 i == DILInstruction.Input || i == DILInstruction.Output
                 || i == DILInstruction.StartLoop || i == DILInstruction.EndLoop // I'm excluding nested loops for now
                 );
-
 
             if (containsIO /* and nested loops */)
             {
@@ -427,6 +408,7 @@ namespace YABFcompiler
 
             return SimpleWalk(instructions, index, whereToStop);
         }
+
         private int ApplySimpleWalkResults(ILGenerator ilg, int index)
         {
             var walkResults = CalculateSimpleWalkResults(index);
@@ -484,28 +466,6 @@ namespace YABFcompiler
         {
             var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
             return instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
-        }
-
-        /// <summary>
-        /// Returns the loop instructions if a clearance pattern is detected
-        /// 
-        /// The following patterns are currently detected:
-        ///     [-], [+]
-        /// </summary>
-        /// <param name="index"></param>
-        /// <returns></returns>
-        private DILInstruction[] IsClearanceLoop(int index)
-        {
-            var loopInstructions = GetLoopInstructions(index);
-            if (loopInstructions.Length == 1) // [-] or [+]
-            {
-                if (loopInstructions[0] == DILInstruction.Dec || loopInstructions[0] == DILInstruction.Inc)
-                {
-                    return loopInstructions;
-                }
-            }
-
-            return null;
         }
 
         /// <summary>
@@ -753,11 +713,10 @@ namespace YABFcompiler
             }
 
             ilg.Emit(OpCodes.Ldelem_U2);
-
             ilg.Emit(OpCodes.Ldloc, array);
             ilg.Emit(OpCodes.Ldloc, ptr);
             ilg.Emit(OpCodes.Ldelem_U2);
-            if (scalar != 1) // multiply only if the scalar is > 1
+            if (scalar != 1) // multiply only if the scalar is != 1
             {
                 ILGeneratorHelpers.Load32BitIntegerConstant(ilg, scalar);
                 ilg.Emit(OpCodes.Mul);
@@ -795,7 +754,7 @@ namespace YABFcompiler
 
             ModuleBuilder mb = ab.DefineDynamicModule(an.Name, String.Format("{0}.exe", Path.GetFileNameWithoutExtension(filename)), true);
 
-            TypeBuilder tb = mb.DefineType("Hello.Program", TypeAttributes.Public | TypeAttributes.Class);
+            TypeBuilder tb = mb.DefineType("Program", TypeAttributes.Public | TypeAttributes.Class);
             MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig, null, null);
 
             return new AssemblyInfo(ab, tb, fb);

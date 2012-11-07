@@ -60,6 +60,7 @@
     <Compile Include="LanguageParsers\CustomLanguageParser.cs" />
     <Compile Include="LanguageParsers\OokParser.cs" />
     <Compile Include="LanguageParsers\ShortOokParser.cs" />
+    <Compile Include="Loop.cs" />
     <Compile Include="MatchingOperationChanges.cs" />
     <Compile Include="Parser.cs" />
     <Compile Include="Program.cs" />

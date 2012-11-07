@@ -4,6 +4,7 @@ namespace YABFcompiler.Exceptions
     using System;
     using System.Runtime.Serialization;
 
+    [Serializable]
     internal class CompilerException : Exception
     {
         public CompilerException() {}
