@@ -42,6 +42,24 @@ namespace YABFcompiler
      * Some patterns of clearance loops are detected and replaced with Assign(0)
      * Examples:
      *      [-], [+]
+     *      
+     * Optimization #5:
+     * Simple loop code walking.
+     * 
+     * A simple loop doesn't contain any input or out, and it also doesn't contain nested loop.
+     * A simple loop also returns to the starting position after execution.  Meaning that the position of StartLoop is equal to the position of EndLoop.
+     * 
+     * These simple loops are replaced with multiplication operations.
+     * 
+     * So for ++[>+++<-] the emitted code will be:
+     * 
+     *     chArray[index] = (char) (chArray[index] + '\x0002');
+     *     chArray[index + 1] = (char) (chArray[index + 1] + ((char) (chArray[index] * '\x0003')));
+     *     chArray[index] = '\0';
+     * 
+     * Notice how the loop in brainfuck was replaced by a multiplication operation and an assigment, 
+     * the assignment being the NULL to the starting position of the loop since that's the 
+     * reason why the loop was halted.
      */
     public class Compiler
     {
@@ -170,12 +188,9 @@ namespace YABFcompiler
                     /* Start of Optimization #4*/
                     if (instruction == DILInstruction.StartLoop && (loopInstructions = IsClearanceLoop(i)) != null)
                     {
-                        if (!AreWeInALoop())
-                        {
                             AssignValue(ilg, 0);
                             i += loopInstructions.Count() + 1;
                             continue;
-                        }
                     }
                     /* End of Optimization #4*/
 
@@ -191,8 +206,6 @@ namespace YABFcompiler
 
                     if (instruction == DILInstruction.StartLoop && (loopInstructions = IsSimpleLoop(i)) != null)
                     {
-                        if (!AreWeInALoop()) // avoiding nested loops for now
-                        {
                             // TODO: Currently working on doing operation walks in simple loops
                             var walkResults = CalculateSimpleWalkResults(i + 1);
 
@@ -209,7 +222,6 @@ namespace YABFcompiler
 
                             i += walkResults.TotalInstructionsCovered + 1;
                             continue;
-                        }
                     }
 
                     if (instruction == DILInstruction.EndLoop)
@@ -335,7 +347,7 @@ namespace YABFcompiler
         /// Returns the operations contained within the loop is the loop is a simple loop
         /// 
         /// A simple loop doesn't contain any input or out, and it also doesn't contain nested loop
-        /// A simple loop also returns to the starting position after execution.  Meaning that the position of StartLoop is equal to the position of EndLoop
+        /// A simple loop also returns to the starting position after execution.  Meaning that the position of StartLoop is equal to the position of EndLoop.
         /// </summary>
         /// <returns></returns>
         private DILInstruction[] IsSimpleLoop(int index)
@@ -364,9 +376,6 @@ namespace YABFcompiler
             }
 
             return loopInstructions;
-
-            var x = returnsToStartLoopPosition;
-            return null;
         }
 
         public int AddOperationToDomain(SortedDictionary<int, int> domain, int index, int step = 1)
@@ -394,7 +403,6 @@ namespace YABFcompiler
             var domain = new SortedDictionary<int, int>();
 
             var ins = operations.Skip(index).Take(stopWalking - index).ToArray();
-            var order = new List<int>();
 
             foreach (var instruction in ins)
             {
@@ -405,17 +413,9 @@ namespace YABFcompiler
                     case DILInstruction.Inc: AddOperationToDomain(domain, ptrIndex); break;
                     case DILInstruction.Dec: AddOperationToDomain(domain, ptrIndex, -1); break;
                 }
-
-                if (instruction == DILInstruction.Inc || instruction == DILInstruction.Dec)
-                {
-                    if (!order.Contains(ptrIndex))
-                    {
-                        order.Add(ptrIndex);
-                    }
-                }
             }
 
-            return new WalkResults(domain, ptrIndex, ins.Count(), order);
+            return new WalkResults(domain, ptrIndex, ins.Count());
         }
 
         private WalkResults CalculateSimpleWalkResults(int index)
@@ -445,7 +445,6 @@ namespace YABFcompiler
                     DecrementPtr(ilg, -needToGo);
                 }
 
-                //AssignValue(ilg, cell.Value);
                 if (cell.Value > 0)
                 {
                     Increment(ilg, cell.Value);
@@ -673,16 +672,6 @@ namespace YABFcompiler
         /// </summary>
         private void Increment(ILGenerator ilg, int step = 1)
         {
-            //ilg.Emit(OpCodes.Ldloc, array);
-            //ilg.Emit(OpCodes.Ldloc, ptr);
-            //ilg.Emit(OpCodes.Ldelema, typeof(char));
-            //ilg.Emit(OpCodes.Dup);
-            //ilg.Emit(OpCodes.Ldobj, typeof(char));
-            //ilg.Emit(OpCodes.Ldc_I4, step);
-            //ilg.Emit(OpCodes.Add);
-            //ilg.Emit(OpCodes.Conv_U2);
-            //ilg.Emit(OpCodes.Stobj, typeof(char));
-
             ilg.Emit(OpCodes.Ldloc, array);
             ilg.Emit(OpCodes.Ldloc, ptr);
             ilg.Emit(OpCodes.Ldloc, array);
@@ -699,16 +688,6 @@ namespace YABFcompiler
         /// </summary>
         private void Decrement(ILGenerator ilg, int step = 1)
         {
-            //ilg.Emit(OpCodes.Ldloc, array);
-            //ilg.Emit(OpCodes.Ldloc, ptr);
-            //ilg.Emit(OpCodes.Ldelema, typeof(char));
-            //ilg.Emit(OpCodes.Dup);
-            //ilg.Emit(OpCodes.Ldobj, typeof(char));
-            //ilg.Emit(OpCodes.Ldc_I4, step);
-            //ilg.Emit(OpCodes.Sub);
-            //ilg.Emit(OpCodes.Conv_U2);
-            //ilg.Emit(OpCodes.Stobj, typeof(char));
-
             ilg.Emit(OpCodes.Ldloc, array);
             ilg.Emit(OpCodes.Ldloc, ptr);
             ilg.Emit(OpCodes.Ldloc, array);

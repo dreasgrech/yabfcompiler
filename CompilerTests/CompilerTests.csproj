@@ -52,11 +52,15 @@
     <Compile Include="TestRunner.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Programs\Brainfuck\gameoflife.bf" />
+    <None Include="Programs\Brainfuck\gameoflife.bf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Programs\Brainfuck\quine1.bf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Programs\Brainfuck\songbeer.bf" />
+    <None Include="Programs\Brainfuck\songbeer.bf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Programs\Dreas\dreas.yabfc">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -25,17 +25,12 @@ namespace YABFcompiler
         /// </summary>
         public int TotalInstructionsCovered { get; private set; }
 
-        /// <summary>
-        /// currently unused
-        /// </summary>
-        public IEnumerable<int> OrderOfMemoryChanges { get; private set; }
 
-        public WalkResults(SortedDictionary<int, int> domain, int endPtrPosition, int totalInstructionsCovered, IEnumerable<int> orderOfMemoryChanges)
+        public WalkResults(SortedDictionary<int, int> domain, int endPtrPosition, int totalInstructionsCovered)
         {
             Domain = domain;
             EndPtrPosition = endPtrPosition;
             TotalInstructionsCovered = totalInstructionsCovered;
-            OrderOfMemoryChanges = orderOfMemoryChanges;
         }
 
         public void IterateDomain(Action<int,int> callback)
@@ -53,11 +48,6 @@ namespace YABFcompiler
             {
                 callback(0, Domain[0]);
             }
-
-            //foreach (var cellIndex in OrderOfMemoryChanges)
-            //{
-            //    callback(cellIndex, Domain[cellIndex]);
-            //}
         }
     }
 }
