@@ -1,4 +1,5 @@
-﻿Usage: yabfcompiler.exe [options] <source>
+﻿# yabfcompiler
+Usage: yabfcompiler.exe [options] <source>
 
 Options:
   -d                         Debug mode
@@ -22,3 +23,55 @@ StartLoop {
 EndLoop }
 Input $
 Output >
+
+
+## Current Assumptions
+Assumption #1:
+Every cell is initialized with 0
+ 
+## Current Optimizations
+**Optimization #1**:
+ Loops which could never be entered are ignored.
+ This can happen when either:
+     1) A loop starts immediately after another loop or
+     2) The loop is at the beginning of the program.
+ 
+**Optimization #2**:
+ Sequences of Input and Output are grouped in a for-loop
+ 
+NOTE: I'm not sure how beneficial this optimization is because although it can reduce the 
+size of the compiled file, it may degrade performance due to the increased jmps introduced by
+the loop.
+
+**Optimization #3**:
+This optimization groups together sequences of Incs and Decs, and IncPtrs and DecPtrs
+Examples: 
+     ++--+ is grouped as a single Inc(1) and -+-- is grouped as a single Dec(2)
+     +++--- is eliminated since it's basically a noop
+     ><<><< is grouped as a single DecPtr(2) and >><>> is grouped as a single IncPtr(3)
+     >>><<< is eliminated since it's basically a noop
+     
+**Optimization #4**:
+Some patterns of clearance loops are detected and replaced with Assign(0)
+Examples:
+     [-], [+]
+     
+**Optimization #5**:
+Simple loop code walking.
+
+A simple loop doesn't contain any input or out, and it also doesn't contain nested loop.
+A simple loop also returns to the starting position after execution.  Meaning that the position of StartLoop is equal to the position of EndLoop.
+
+These simple loops are replaced with multiplication operations.
+
+So for ++[>+++<-] the emitted code will be:
+
+    chArray[index] = (char) (chArray[index] + '\x0002');
+    chArray[index + 1] = (char) (chArray[index + 1] + ((char) (chArray[index] * '\x0003')));
+    chArray[index] = '\0';
+
+Notice how the loop in brainfuck was replaced by a multiplication operation and an assigment, 
+the assignment being the NULL to the starting position of the loop since that's the 
+reason why the loop was halted.
+
+
