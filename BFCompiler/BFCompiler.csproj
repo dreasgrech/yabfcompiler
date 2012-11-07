@@ -46,6 +46,13 @@
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="CompilationOptions.cs" />
     <Compile Include="CompilerFactory.cs" />
+    <Compile Include="DIL\AdditionMemoryOp.cs" />
+    <Compile Include="DIL\DILInstruction.cs" />
+    <Compile Include="DIL\LoopOp.cs" />
+    <Compile Include="DIL\MultiplicationMemoryOp.cs" />
+    <Compile Include="DIL\PtrOp.cs" />
+    <Compile Include="DIL\ReadOp.cs" />
+    <Compile Include="DIL\WriteOp.cs" />
     <Compile Include="EventArguments\CompilationWarningEventArgs.cs" />
     <Compile Include="Exceptions\CompilerException.cs" />
     <Compile Include="Exceptions\InstructionNotFoundException.cs" />

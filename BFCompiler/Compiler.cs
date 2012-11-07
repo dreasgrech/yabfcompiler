@@ -219,21 +219,21 @@ namespace YABFcompiler
                         // TODO: Currently working on Optimization #5 for nested loops
                         if (IsSimpleLoop(i) != null) // TODO: needs to be changed to loop.IsSimple()
                         {
-                            var walkResults = CalculateSimpleWalkResults(i + 1);
+                            //var walkResults = CalculateSimpleWalkResults(i + 1);
 
-                            walkResults.IterateDomain((cellIndex, cellDelta) =>
-                                                          {
-                                                              if (cellIndex == 0)
-                                                              {
-                                                                  AssignValue(ilg, 0);
-                                                                  return;
-                                                              }
+                            //walkResults.IterateDomain((cellIndex, cellDelta) =>
+                            //                              {
+                            //                                  if (cellIndex == 0)
+                            //                                  {
+                            //                                      AssignValue(ilg, 0);
+                            //                                      return;
+                            //                                  }
 
-                                                              MultiplyByIndexValue(ilg, cellIndex, cellDelta);
-                                                          });
+                            //                                  MultiplyByIndexValue(ilg, cellIndex, cellDelta);
+                            //                              });
 
-                            i += walkResults.TotalInstructionsCovered + 1;
-                            continue;
+                            //i += walkResults.TotalInstructionsCovered + 1;
+                            //continue;
                         }
                         /* End of Optimization #5 */
                     }

@@ -9,9 +9,9 @@ namespace TestRun
         {
             int index = 0;
             char[] chArray = new char[0x493e0];
-            chArray[index] = (char)(chArray[index] + '\x0005');
-            while (chArray[index] != '\0')
-            {
+            //chArray[index] = (char)(chArray[index] + '\x0005');
+            //while (chArray[index] != '\0')
+            //{
                 index++;
                 chArray[index] = (char)(chArray[index] + '\x0005');
                 chArray[index + 1] = (char)(chArray[index + 1] + ((char)(chArray[index] * '\x0004')));
@@ -22,8 +22,8 @@ namespace TestRun
                 chArray[index] = '\0';
                 index -= 2;
                 chArray[index] = (char)(chArray[index] - '\x0001');
-            }
-            index += 3;
+            //}
+            //index += 3;
             Console.Write(chArray[index]);
 
         }
