@@ -128,7 +128,7 @@ namespace YABFcompiler
                         continue;
                     }
 
-                    i += CalculateSimpleWalkResults(ilg, i) - 1;
+                    i += ApplySimpleWalkResults(ilg, i) - 1;
                     continue;
                 }
 
@@ -141,7 +141,7 @@ namespace YABFcompiler
                         continue;
                     }
 
-                    i += CalculateSimpleWalkResults(ilg, i) - 1;
+                    i += ApplySimpleWalkResults(ilg, i) - 1;
                     continue;
                 }
                 /* End of Optimization #3 */
@@ -179,14 +179,7 @@ namespace YABFcompiler
                     }
                     /* End of Optimization #4*/
 
-                    if (instruction == DILInstruction.EndLoop)
-                    {
-                        whileLoopStack.Pop();
-                    }
-                    else
-                    {
-                        whileLoopStack.Push(DILInstruction.StartLoop);
-                    }
+
 
                     if (instruction == DILInstruction.StartLoop && (loopInstructions = IsInfiniteLoopPattern(i)) != null)
                     {
@@ -196,15 +189,37 @@ namespace YABFcompiler
                         }
                     }
 
-                    //if (instruction == DILInstruction.StartLoop && (loopInstructions = IsSimpleLoop(i)) != null)
-                    //{
-                    //    //// TODO: Currently working on doing operation walks in simple loops
-                    //    //EmitInstruction(ilg, instruction);
-                    //    //i += CalculateSimpleWalkResults(ilg, i + 1);
+                    if (instruction == DILInstruction.StartLoop && (loopInstructions = IsSimpleLoop(i)) != null)
+                    {
+                        if (!AreWeInALoop()) // avoiding nested loops for now
+                        {
+                            // TODO: Currently working on doing operation walks in simple loops
+                            var walkResults = CalculateSimpleWalkResults(i + 1);
 
-                    //    //continue;
+                            walkResults.IterateDomain((cellIndex, cellDelta) =>
+                            {
+                                if (cellIndex == 0)
+                                {
+                                    AssignValue(ilg, 0);
+                                    return;
+                                }
 
-                    //}
+                                MultiplyByIndexValue(ilg, cellIndex, cellDelta);
+                            });
+
+                            i += walkResults.TotalInstructionsCovered + 1;
+                            continue;
+                        }
+                    }
+
+                    if (instruction == DILInstruction.EndLoop)
+                    {
+                        whileLoopStack.Pop();
+                    }
+                    else
+                    {
+                        whileLoopStack.Push(DILInstruction.StartLoop);
+                    }
 
                     EmitInstruction(ilg, instruction);
                     continue;
@@ -369,39 +384,52 @@ namespace YABFcompiler
         /// <summary>
         /// TODO: Need to make it work for when the ptr goes below 0
         /// </summary>
-        /// <param name="instructions"></param>
+        /// <param name="operations"></param>
         /// <param name="index"></param>
         /// <param name="stopWalking"></param>
         /// <returns></returns>
-        private WalkResults SimpleWalk(IEnumerable<DILInstruction> instructions, int index, int stopWalking)
+        private WalkResults SimpleWalk(IEnumerable<DILInstruction> operations, int index, int stopWalking)
         {
-            int ptr = 0;
+            int ptrIndex = 0;
             var domain = new SortedDictionary<int, int>();
 
-            var ins = instructions.Skip(index).Take(stopWalking - index);
+            var ins = operations.Skip(index).Take(stopWalking - index).ToArray();
+            var order = new List<int>();
 
             foreach (var instruction in ins)
             {
                 switch (instruction)
                 {
-                    case DILInstruction.IncPtr: ptr++; break;
-                    case DILInstruction.DecPtr: ptr--; break;
-                    case DILInstruction.Inc: AddOperationToDomain(domain, ptr); break;
-                    case DILInstruction.Dec: AddOperationToDomain(domain, ptr, -1); break;
+                    case DILInstruction.IncPtr: ptrIndex++; break;
+                    case DILInstruction.DecPtr: ptrIndex--; break;
+                    case DILInstruction.Inc: AddOperationToDomain(domain, ptrIndex); break;
+                    case DILInstruction.Dec: AddOperationToDomain(domain, ptrIndex, -1); break;
+                }
+
+                if (instruction == DILInstruction.Inc || instruction == DILInstruction.Dec)
+                {
+                    if (!order.Contains(ptrIndex))
+                    {
+                        order.Add(ptrIndex);
+                    }
                 }
             }
 
-            return new WalkResults(domain, ptr, ins.Count());
+            return new WalkResults(domain, ptrIndex, ins.Count(), order);
         }
 
-        private int CalculateSimpleWalkResults(ILGenerator ilg, int index)
+        private WalkResults CalculateSimpleWalkResults(int index)
         {
             var end = instructions.Length;
             int whereToStop = Math.Min(Math.Min(
                 Math.Min(GetNextInstructionIndex(index, DILInstruction.StartLoop) ?? end, GetNextInstructionIndex(index, DILInstruction.Input) ?? end),
                 GetNextInstructionIndex(index, DILInstruction.Output) ?? end), GetNextInstructionIndex(index, DILInstruction.EndLoop) ?? end);
 
-            var walkResults = SimpleWalk(instructions, index, whereToStop);
+            return SimpleWalk(instructions, index, whereToStop);
+        }
+        private int ApplySimpleWalkResults(ILGenerator ilg, int index)
+        {
+            var walkResults = CalculateSimpleWalkResults(index);
 
             int ptrPosition = 0;
             foreach (var cell in walkResults.Domain)
@@ -636,8 +664,8 @@ namespace YABFcompiler
         {
             ilg.Emit(OpCodes.Ldloc, array);
             ilg.Emit(OpCodes.Ldloc, ptr);
-            ilg.Emit(OpCodes.Ldc_I4, value);
-            ilg.Emit(OpCodes.Stelem_I4);
+            ILGeneratorHelpers.Load32BitIntegerConstant(ilg, value);
+            ilg.Emit(OpCodes.Stelem_I2);
         }
 
         /// <summary>
@@ -645,15 +673,25 @@ namespace YABFcompiler
         /// </summary>
         private void Increment(ILGenerator ilg, int step = 1)
         {
+            //ilg.Emit(OpCodes.Ldloc, array);
+            //ilg.Emit(OpCodes.Ldloc, ptr);
+            //ilg.Emit(OpCodes.Ldelema, typeof(char));
+            //ilg.Emit(OpCodes.Dup);
+            //ilg.Emit(OpCodes.Ldobj, typeof(char));
+            //ilg.Emit(OpCodes.Ldc_I4, step);
+            //ilg.Emit(OpCodes.Add);
+            //ilg.Emit(OpCodes.Conv_U2);
+            //ilg.Emit(OpCodes.Stobj, typeof(char));
+
             ilg.Emit(OpCodes.Ldloc, array);
             ilg.Emit(OpCodes.Ldloc, ptr);
-            ilg.Emit(OpCodes.Ldelema, typeof(char));
-            ilg.Emit(OpCodes.Dup);
-            ilg.Emit(OpCodes.Ldobj, typeof(char));
-            ilg.Emit(OpCodes.Ldc_I4, step);
+            ilg.Emit(OpCodes.Ldloc, array);
+            ilg.Emit(OpCodes.Ldloc, ptr);
+            ilg.Emit(OpCodes.Ldelem_U2);
+            ILGeneratorHelpers.Load32BitIntegerConstant(ilg, step);
             ilg.Emit(OpCodes.Add);
             ilg.Emit(OpCodes.Conv_U2);
-            ilg.Emit(OpCodes.Stobj, typeof(char));
+            ilg.Emit(OpCodes.Stelem_I2);
         }
 
         /// <summary>
@@ -661,15 +699,95 @@ namespace YABFcompiler
         /// </summary>
         private void Decrement(ILGenerator ilg, int step = 1)
         {
+            //ilg.Emit(OpCodes.Ldloc, array);
+            //ilg.Emit(OpCodes.Ldloc, ptr);
+            //ilg.Emit(OpCodes.Ldelema, typeof(char));
+            //ilg.Emit(OpCodes.Dup);
+            //ilg.Emit(OpCodes.Ldobj, typeof(char));
+            //ilg.Emit(OpCodes.Ldc_I4, step);
+            //ilg.Emit(OpCodes.Sub);
+            //ilg.Emit(OpCodes.Conv_U2);
+            //ilg.Emit(OpCodes.Stobj, typeof(char));
+
             ilg.Emit(OpCodes.Ldloc, array);
             ilg.Emit(OpCodes.Ldloc, ptr);
-            ilg.Emit(OpCodes.Ldelema, typeof(char));
-            ilg.Emit(OpCodes.Dup);
-            ilg.Emit(OpCodes.Ldobj, typeof(char));
-            ilg.Emit(OpCodes.Ldc_I4, step);
+            ilg.Emit(OpCodes.Ldloc, array);
+            ilg.Emit(OpCodes.Ldloc, ptr);
+            ilg.Emit(OpCodes.Ldelem_U2);
+            ILGeneratorHelpers.Load32BitIntegerConstant(ilg, step);
             ilg.Emit(OpCodes.Sub);
             ilg.Emit(OpCodes.Conv_U2);
-            ilg.Emit(OpCodes.Stobj, typeof(char));
+            ilg.Emit(OpCodes.Stelem_I2);
+        }
+
+        /// <summary>
+        /// Given an offset of 2 and scalar of 3, generates:
+        /// chArray[index + 2] = (char) (chArray[index + 2] + ((char) (chArray[index] * '\x0003')));
+        /// 
+        /// If the scalar is 1, no multiplication is done:
+        /// chArray[index + 2] = (char) (chArray[index + 2] + chArray[index]);
+        /// </summary>
+        /// <param name="ilg"></param>
+        /// <param name="offset"></param>
+        /// <param name="scalar"></param>
+        private void MultiplyByIndexValue(ILGenerator ilg, int offset, int scalar)
+        {
+            ilg.Emit(OpCodes.Ldloc, array);
+            ilg.Emit(OpCodes.Ldloc, ptr);
+
+            if (offset != 0)
+            {
+                OpCode instruction;
+                int os = offset;
+                if (offset > 0)
+                {
+                    instruction = OpCodes.Add;
+                }
+                else
+                {
+                    instruction = OpCodes.Sub;
+                    os = -os;
+                }
+
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, os);
+                ilg.Emit(instruction);
+            }
+
+            ilg.Emit(OpCodes.Ldloc, array);
+            ilg.Emit(OpCodes.Ldloc, ptr);
+            if (offset != 0)
+            {
+                OpCode instruction;
+                int os = offset;
+                if (offset > 0)
+                {
+                    instruction = OpCodes.Add;
+                }
+                else
+                {
+                    instruction = OpCodes.Sub;
+                    os = -os;
+                }
+
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, os);
+                ilg.Emit(instruction);
+            }
+
+            ilg.Emit(OpCodes.Ldelem_U2);
+
+            ilg.Emit(OpCodes.Ldloc, array);
+            ilg.Emit(OpCodes.Ldloc, ptr);
+            ilg.Emit(OpCodes.Ldelem_U2);
+            if (scalar != 1) // multiply only if the scalar is > 1
+            {
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, scalar);
+                ilg.Emit(OpCodes.Mul);
+                ilg.Emit(OpCodes.Conv_U2);
+            }
+
+            ilg.Emit(OpCodes.Add);
+            ilg.Emit(OpCodes.Conv_U2);
+            ilg.Emit(OpCodes.Stelem_I2);
         }
 
         /// <summary>
@@ -698,8 +816,8 @@ namespace YABFcompiler
 
             ModuleBuilder mb = ab.DefineDynamicModule(an.Name, String.Format("{0}.exe", Path.GetFileNameWithoutExtension(filename)), true);
 
-            TypeBuilder tb = mb.DefineType("Program", TypeAttributes.Public | TypeAttributes.Class);
-            MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Public | MethodAttributes.Static, null, null);
+            TypeBuilder tb = mb.DefineType("Hello.Program", TypeAttributes.Public | TypeAttributes.Class);
+            MethodBuilder fb = tb.DefineMethod("Main", MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig, null, null);
 
             return new AssemblyInfo(ab, tb, fb);
         }

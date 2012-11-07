@@ -1,4 +1,6 @@
 ﻿
+using System.Collections.Generic;
+
 namespace YABFcompiler
 {
     using System.Reflection.Emit;
@@ -6,10 +8,23 @@ namespace YABFcompiler
 
     internal static class ILGeneratorHelpers
     {
+        public static Dictionary<int, OpCode> IntegerConstants32bit = new Dictionary<int, OpCode>
+                                                                          {
+                                                                              {0, OpCodes.Ldc_I4_0},
+                                                                              {1, OpCodes.Ldc_I4_1},
+                                                                              {2, OpCodes.Ldc_I4_2},
+                                                                              {3, OpCodes.Ldc_I4_3},
+                                                                              {4, OpCodes.Ldc_I4_4},
+                                                                              {5, OpCodes.Ldc_I4_5},
+                                                                              {6, OpCodes.Ldc_I4_6},
+                                                                              {7, OpCodes.Ldc_I4_7},
+                                                                              {8, OpCodes.Ldc_I4_8},
+                                                                              //{9, OpCodes.Ldc_I4_S},
+                                                                          };
         public static LocalBuilder Increment(this ILGenerator ilg, LocalBuilder variable, int step = 1)
         {
             ilg.Emit(OpCodes.Ldloc, variable);
-            ilg.Emit(OpCodes.Ldc_I4, step);
+            Load32BitIntegerConstant(ilg, step);
             ilg.Emit(OpCodes.Add);
             ilg.Emit(OpCodes.Stloc, variable);
             return variable;
@@ -18,7 +33,7 @@ namespace YABFcompiler
         public static LocalBuilder Decrement(this ILGenerator ilg, LocalBuilder variable, int step = 1)
         {
             ilg.Emit(OpCodes.Ldloc, variable);
-            ilg.Emit(OpCodes.Ldc_I4, step);
+            Load32BitIntegerConstant(ilg, step);
             ilg.Emit(OpCodes.Sub);
             ilg.Emit(OpCodes.Stloc, variable);
             return variable;
@@ -27,7 +42,7 @@ namespace YABFcompiler
         public static LocalBuilder DeclareIntegerVariable(this ILGenerator ilg, int value = 0)
         {
             LocalBuilder intVariable = ilg.DeclareLocal(typeof(int));
-            ilg.Emit(OpCodes.Ldc_I4, value);
+            Load32BitIntegerConstant(ilg, value);
             ilg.Emit(OpCodes.Stloc, intVariable);
 
             return intVariable;
@@ -35,7 +50,7 @@ namespace YABFcompiler
 
         public static LocalBuilder ReassignIntegerVariable(this ILGenerator ilg, LocalBuilder variable, int value = 0)
         {
-            ilg.Emit(OpCodes.Ldc_I4, value);
+            Load32BitIntegerConstant(ilg, value);
             ilg.Emit(OpCodes.Stloc, variable);
 
             return variable;
@@ -45,7 +60,7 @@ namespace YABFcompiler
         {
             LocalBuilder array = ilg.DeclareLocal(typeof(T[]));
             array.SetLocalSymInfo(name);
-            ilg.Emit(OpCodes.Ldc_I4, size);
+            Load32BitIntegerConstant(ilg, size);
             ilg.Emit(OpCodes.Newarr, typeof(T));
             ilg.Emit(OpCodes.Stloc, array);
             return array;
@@ -70,7 +85,7 @@ namespace YABFcompiler
         public static void EndForLoop(this ILGenerator ilg, ILForLoop forLoop)
         {
             ilg.Emit(OpCodes.Ldloc, forLoop.Counter);
-            ilg.Emit(OpCodes.Ldc_I4_1);
+            Load32BitIntegerConstant(ilg, 1);
             ilg.Emit(OpCodes.Add);
             ilg.Emit(OpCodes.Stloc, forLoop.Counter);
 
@@ -78,6 +93,17 @@ namespace YABFcompiler
             ilg.Emit(OpCodes.Ldloc, forLoop.Counter);
             ilg.Emit(OpCodes.Ldloc, forLoop.Max);
             ilg.Emit(OpCodes.Blt, forLoop.StartLoopLogicLabel);
+        }
+
+        public static void Load32BitIntegerConstant(ILGenerator ilg, int constant)
+        {
+            if (IntegerConstants32bit.ContainsKey(constant))
+            {
+                ilg.Emit(IntegerConstants32bit[constant]);
+                return;
+            }
+
+            ilg.Emit(OpCodes.Ldc_I4, constant);
         }
 
         private static ILForLoop StartForLoop(this ILGenerator ilg, LocalBuilder counterVariable, LocalBuilder maximumVariable)

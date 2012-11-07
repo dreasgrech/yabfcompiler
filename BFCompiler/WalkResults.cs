@@ -1,4 +1,6 @@
 ﻿
+using System;
+
 namespace YABFcompiler
 {
     using System.Collections.Generic;
@@ -23,11 +25,39 @@ namespace YABFcompiler
         /// </summary>
         public int TotalInstructionsCovered { get; private set; }
 
-        public WalkResults(SortedDictionary<int, int> domain, int endPtrPosition, int totalInstructionsCovered)
+        /// <summary>
+        /// currently unused
+        /// </summary>
+        public IEnumerable<int> OrderOfMemoryChanges { get; private set; }
+
+        public WalkResults(SortedDictionary<int, int> domain, int endPtrPosition, int totalInstructionsCovered, IEnumerable<int> orderOfMemoryChanges)
         {
             Domain = domain;
             EndPtrPosition = endPtrPosition;
             TotalInstructionsCovered = totalInstructionsCovered;
+            OrderOfMemoryChanges = orderOfMemoryChanges;
+        }
+
+        public void IterateDomain(Action<int,int> callback)
+        {
+            foreach (var cellAndValue in Domain)
+            {
+                if (cellAndValue.Key != 0)
+                {
+                    callback(cellAndValue.Key, cellAndValue.Value);
+                }
+            }
+
+            // If there is no change on 0, then it's an infinite loop
+            if (Domain.ContainsKey(0))
+            {
+                callback(0, Domain[0]);
+            }
+
+            //foreach (var cellIndex in OrderOfMemoryChanges)
+            //{
+            //    callback(cellIndex, Domain[cellIndex]);
+            //}
         }
     }
 }
