@@ -10,11 +10,22 @@ namespace YABFcompiler
         public DILInstruction[] Instructions { get; set; }
         public List<Loop> NestedLoops { get; set; }
 
+        /// <summary>
+        /// If the loop is a simple loop, this property
+        /// will be populated with the walk results.
+        /// </summary>
+        public WalkResults WalkResults { get; private set; }
+        
         public Loop(int index, IEnumerable<DILInstruction> instructions, List<Loop> nestedLoops)
         {
             Index = index;
             Instructions = instructions.ToArray();
             NestedLoops = nestedLoops;
+
+            if (IsSimple())
+            {
+                WalkResults = Walk();
+            }
         }
 
         /// <summary>
@@ -85,6 +96,49 @@ namespace YABFcompiler
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// The walk skips nested loops.
+        /// 
+        /// So if this loop is [>+++[>++]-] 
+        /// the walk results will be:
+        /// {{1:2}} 
+        /// 
+        /// The nested loop was skipped.
+        /// </summary>
+        /// <returns></returns>
+        public WalkResults Walk()
+        {
+            int ptrIndex = 0;
+            var domain = new SortedDictionary<int, int>();
+
+            for (int i = 0; i < Instructions.Length; i++)
+            {
+                var instruction = Instructions[i];
+                switch (instruction)
+                {
+                    case DILInstruction.IncPtr: ptrIndex++; break;
+                    case DILInstruction.DecPtr: ptrIndex--; break;
+                    case DILInstruction.Inc: AddOperationToDomain(domain, ptrIndex); break;
+                    case DILInstruction.Dec: AddOperationToDomain(domain, ptrIndex, -1); break;
+                    case DILInstruction.StartLoop: i = GetNextClosingLoopIndex(i).Value; break;
+                }
+            }
+
+            return new WalkResults(domain, ptrIndex, Instructions.Count());
+        }
+
+        private int AddOperationToDomain(SortedDictionary<int, int> domain, int index, int step = 1)
+        {
+            if (domain.ContainsKey(index))
+            {
+                domain[index] += step;
+                return domain[index];
+            }
+
+            domain.Add(index, step);
+            return step;
         }
 
         /// <summary>
