@@ -7,7 +7,7 @@ namespace YABFcompiler.LanguageParsers
     {
         public ShortOokParser()
             : base(
-            new Dictionary<string, DILInstruction> { { ".?", DILInstruction.IncPtr }, { "?.", DILInstruction.DecPtr }, { "..", DILInstruction.Inc }, { "!!", DILInstruction.Dec }, { "!.", DILInstruction.Output }, { ".!", DILInstruction.Input }, { "!?", DILInstruction.StartLoop }, { "?!", DILInstruction.EndLoop } })
+            new Dictionary<string, LanguageInstruction> { { ".?", LanguageInstruction.IncPtr }, { "?.", LanguageInstruction.DecPtr }, { "..", LanguageInstruction.Inc }, { "!!", LanguageInstruction.Dec }, { "!.", LanguageInstruction.Output }, { ".!", LanguageInstruction.Input }, { "!?", LanguageInstruction.StartLoop }, { "?!", LanguageInstruction.EndLoop } })
         {
 ;
         }

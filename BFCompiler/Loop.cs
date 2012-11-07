@@ -7,7 +7,7 @@ namespace YABFcompiler
     class Loop
     {
         public int Index { get; set; }
-        public DILInstruction[] Instructions { get; set; }
+        public LanguageInstruction[] Instructions { get; set; }
         public List<Loop> NestedLoops { get; set; }
 
         /// <summary>
@@ -16,7 +16,7 @@ namespace YABFcompiler
         /// </summary>
         public WalkResults WalkResults { get; private set; }
         
-        public Loop(int index, IEnumerable<DILInstruction> instructions, List<Loop> nestedLoops)
+        public Loop(int index, IEnumerable<LanguageInstruction> instructions, List<Loop> nestedLoops)
         {
             Index = index;
             Instructions = instructions.ToArray();
@@ -35,7 +35,7 @@ namespace YABFcompiler
         /// <param name="instructions"></param>
         /// <param name="offset">The index of the StartLoop instruction</param>
         /// <returns></returns>
-        public static Loop Construct(DILInstruction[] instructions, int offset)
+        public static Loop Construct(LanguageInstruction[] instructions, int offset)
         {
             var loopInstructions = GetLoopInstructions(instructions, offset);
             var nestedLoops = GetNestedLoops(loopInstructions);
@@ -48,12 +48,12 @@ namespace YABFcompiler
         /// i.e. the 5 operations that are not within nested loops
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<DILInstruction> GetInstructionsSkippingNestedLoops()
+        public IEnumerable<LanguageInstruction> GetInstructionsSkippingNestedLoops()
         {
             for (int i = 0; i < Instructions.Length; i++)
             {
                 var instruction = Instructions[i];
-                if (!(instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop))
+                if (!(instruction == LanguageInstruction.StartLoop || instruction == LanguageInstruction.EndLoop))
                 {
                     yield return instruction;
                 }
@@ -75,7 +75,7 @@ namespace YABFcompiler
         {
             if (Instructions.Length == 1) // [-] or [+]
             {
-                if (Instructions[0] == DILInstruction.Dec || Instructions[0] == DILInstruction.Inc)
+                if (Instructions[0] == LanguageInstruction.Dec || Instructions[0] == LanguageInstruction.Inc)
                 {
                     return true;
                 }
@@ -118,11 +118,11 @@ namespace YABFcompiler
                 var instruction = Instructions[i];
                 switch (instruction)
                 {
-                    case DILInstruction.IncPtr: ptrIndex++; break;
-                    case DILInstruction.DecPtr: ptrIndex--; break;
-                    case DILInstruction.Inc: AddOperationToDomain(domain, ptrIndex); break;
-                    case DILInstruction.Dec: AddOperationToDomain(domain, ptrIndex, -1); break;
-                    case DILInstruction.StartLoop: i = GetNextClosingLoopIndex(i).Value; break;
+                    case LanguageInstruction.IncPtr: ptrIndex++; break;
+                    case LanguageInstruction.DecPtr: ptrIndex--; break;
+                    case LanguageInstruction.Inc: AddOperationToDomain(domain, ptrIndex); break;
+                    case LanguageInstruction.Dec: AddOperationToDomain(domain, ptrIndex, -1); break;
+                    case LanguageInstruction.StartLoop: i = GetNextClosingLoopIndex(i).Value; break;
                 }
             }
 
@@ -148,7 +148,7 @@ namespace YABFcompiler
         /// <param name="instructions"></param>
         /// <param name="offset">The index of the StartLoop instruction</param>
         /// <returns></returns>
-        private static DILInstruction[] GetLoopInstructions(DILInstruction[] instructions, int offset)
+        private static LanguageInstruction[] GetLoopInstructions(LanguageInstruction[] instructions, int offset)
         {
             var closingEndLoopIndex = GetNextClosingLoopIndex(instructions, offset).Value;
             return instructions.Skip(offset + 1).Take(closingEndLoopIndex - offset - 1).ToArray();
@@ -159,11 +159,11 @@ namespace YABFcompiler
         /// nested loops contained in the set.
         /// </summary>
         /// <returns></returns>
-        private static List<Loop> GetNestedLoops(DILInstruction[] instructions)
+        private static List<Loop> GetNestedLoops(LanguageInstruction[] instructions)
         {
             var nestedLoops = new List<Loop>();
             var loopInstructions = instructions;
-            var containsNestedLoops = loopInstructions.Any(li => li == DILInstruction.StartLoop);
+            var containsNestedLoops = loopInstructions.Any(li => li == LanguageInstruction.StartLoop);
             if (!containsNestedLoops)
             {
                 return nestedLoops;
@@ -172,12 +172,12 @@ namespace YABFcompiler
             for (int i = 0; i < instructions.Length; i++)
             {
                 var ins = instructions[i];
-                if (!(ins == DILInstruction.StartLoop || ins == DILInstruction.EndLoop))
+                if (!(ins == LanguageInstruction.StartLoop || ins == LanguageInstruction.EndLoop))
                 {
                     continue;
                 }
 
-                if (ins == DILInstruction.StartLoop)
+                if (ins == LanguageInstruction.StartLoop)
                 {
                     var lInstructions = GetLoopInstructions(instructions, i);
                     var loop = new Loop(i, lInstructions, GetNestedLoops(lInstructions));
@@ -190,18 +190,18 @@ namespace YABFcompiler
             return nestedLoops;
         }
 
-        private static int? GetNextClosingLoopIndex(DILInstruction[] instructions, int index)
+        private static int? GetNextClosingLoopIndex(LanguageInstruction[] instructions, int index)
         {
             int stack = 0;
 
             for (int i = index + 1; i < instructions.Length; i++)
             {
-                if (instructions[i] == DILInstruction.StartLoop)
+                if (instructions[i] == LanguageInstruction.StartLoop)
                 {
                     stack += 1;
                 }
 
-                if (instructions[i] == DILInstruction.EndLoop)
+                if (instructions[i] == LanguageInstruction.EndLoop)
                 {
                     if (stack > 0)
                     {
@@ -242,7 +242,7 @@ namespace YABFcompiler
         {
             var instructionsWithoutNestedLoops = GetInstructionsSkippingNestedLoops().ToArray();
 
-            bool containsIO = instructionsWithoutNestedLoops.Any(i => i == DILInstruction.Input || i == DILInstruction.Output);
+            bool containsIO = instructionsWithoutNestedLoops.Any(i => i == LanguageInstruction.Input || i == LanguageInstruction.Output);
 
             if (containsIO)
             {
@@ -250,8 +250,8 @@ namespace YABFcompiler
             }
 
 
-            int totalIncPtrs = instructionsWithoutNestedLoops.Count(i => i == DILInstruction.IncPtr),
-                totalDecPtrs = instructionsWithoutNestedLoops.Count(i => i == DILInstruction.DecPtr);
+            int totalIncPtrs = instructionsWithoutNestedLoops.Count(i => i == LanguageInstruction.IncPtr),
+                totalDecPtrs = instructionsWithoutNestedLoops.Count(i => i == LanguageInstruction.DecPtr);
 
             var returnsToStartLoopPosition = totalDecPtrs == totalIncPtrs;
 

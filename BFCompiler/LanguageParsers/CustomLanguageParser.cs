@@ -10,16 +10,16 @@ namespace YABFcompiler.LanguageParsers
         {
         }
 
-        public static Dictionary<string, DILInstruction> Parse(string[] languageDefinition)
+        public static Dictionary<string, LanguageInstruction> Parse(string[] languageDefinition)
         {
-            var operators = new Dictionary<string, DILInstruction>();
+            var operators = new Dictionary<string, LanguageInstruction>();
             foreach (var line in languageDefinition)
             {
                 var firstSpace = line.IndexOf(" ");
                 string dilInstruction = line.Substring(0, firstSpace),
                        languageToken = line.Substring(firstSpace + 1);
 
-                operators.Add(languageToken, (DILInstruction)Enum.Parse(typeof(DILInstruction), dilInstruction));
+                operators.Add(languageToken, (LanguageInstruction)Enum.Parse(typeof(LanguageInstruction), dilInstruction));
             }
 
             return operators;

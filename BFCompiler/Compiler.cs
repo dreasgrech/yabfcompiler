@@ -80,7 +80,7 @@ namespace YABFcompiler
         public Parser Parser { get; private set; }
         public CompilationOptions Options { get; private set; }
 
-        private DILInstruction[] instructions;
+        private LanguageInstruction[] instructions;
         private readonly MethodInfo consoleWriteMethodInfo = typeof(Console).GetMethod("Write", new[] { typeof(char) });
         private readonly MethodInfo consoleReadMethodInfo = typeof(Console).GetMethod("Read");
 
@@ -89,8 +89,8 @@ namespace YABFcompiler
         private LocalBuilder ptr;
         private LocalBuilder array;
         private Stack<Label> loopStack;
-        private DILInstruction previousInstruction;
-        private readonly Stack<DILInstruction> whileLoopStack = new Stack<DILInstruction>();
+        private LanguageInstruction previousInstruction;
+        private readonly Stack<LanguageInstruction> whileLoopStack = new Stack<LanguageInstruction>();
 
         public Compiler(Parser parser, CompilationOptions options = 0)
         {
@@ -116,7 +116,7 @@ namespace YABFcompiler
 
             var forLoopSpaceOptimizationStack = new Stack<ILForLoop>();
 
-            DILInstruction? areLoopOperationsBalanced;
+            LanguageInstruction? areLoopOperationsBalanced;
             if ((areLoopOperationsBalanced = AreLoopOperationsBalanced()) != null)
             {
                 throw new InstructionNotFoundException(String.Format("Expected to find an {0} instruction but didn't.", (~areLoopOperationsBalanced.Value).ToString()));
@@ -138,7 +138,7 @@ namespace YABFcompiler
                 }
 
                 /* Start of Optimization #3 */
-                if ((instruction == DILInstruction.Inc || instruction == DILInstruction.Dec))
+                if ((instruction == LanguageInstruction.Inc || instruction == LanguageInstruction.Dec))
                 {
                     if (AreWeInALoop())
                     {
@@ -151,7 +151,7 @@ namespace YABFcompiler
                     continue;
                 }
 
-                if (instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr)
+                if (instruction == LanguageInstruction.IncPtr || instruction == LanguageInstruction.DecPtr)
                 {
                     if (AreWeInALoop())
                     {
@@ -172,8 +172,8 @@ namespace YABFcompiler
                  *  completely skip the loops and carry on.
                  */
                 if (
-                    (instruction == DILInstruction.StartLoop && previousInstruction == DILInstruction.EndLoop)
-                    || (instruction == DILInstruction.StartLoop && i == 0)
+                    (instruction == LanguageInstruction.StartLoop && previousInstruction == LanguageInstruction.EndLoop)
+                    || (instruction == LanguageInstruction.StartLoop && i == 0)
                     )
                 {
                     var nextEndLoopInstructionIndex = GetNextClosingLoopIndex(i);
@@ -182,9 +182,9 @@ namespace YABFcompiler
                 }
                 /* End of Optimization #1 */
 
-                if (instruction == DILInstruction.StartLoop || instruction == DILInstruction.EndLoop)
+                if (instruction == LanguageInstruction.StartLoop || instruction == LanguageInstruction.EndLoop)
                 {
-                    if (instruction == DILInstruction.StartLoop)
+                    if (instruction == LanguageInstruction.StartLoop)
                     {
                         var loop = Loop.Construct(instructions, i);
 
@@ -219,32 +219,32 @@ namespace YABFcompiler
                         // TODO: Currently working on Optimization #5 for nested loops
                         if (IsSimpleLoop(i) != null) // TODO: needs to be changed to loop.IsSimple()
                         {
-                            //var walkResults = CalculateSimpleWalkResults(i + 1);
+                            var walkResults = CalculateSimpleWalkResults(i + 1);
 
-                            //walkResults.IterateDomain((cellIndex, cellDelta) =>
-                            //                              {
-                            //                                  if (cellIndex == 0)
-                            //                                  {
-                            //                                      AssignValue(ilg, 0);
-                            //                                      return;
-                            //                                  }
+                            walkResults.IterateDomain((cellIndex, cellDelta) =>
+                                                          {
+                                                              if (cellIndex == 0)
+                                                              {
+                                                                  AssignValue(ilg, 0);
+                                                                  return;
+                                                              }
 
-                            //                                  MultiplyByIndexValue(ilg, cellIndex, cellDelta);
-                            //                              });
+                                                              MultiplyByIndexValue(ilg, cellIndex, cellDelta);
+                                                          });
 
-                            //i += walkResults.TotalInstructionsCovered + 1;
-                            //continue;
+                            i += walkResults.TotalInstructionsCovered + 1;
+                            continue;
                         }
                         /* End of Optimization #5 */
                     }
 
-                    if (instruction == DILInstruction.EndLoop)
+                    if (instruction == LanguageInstruction.EndLoop)
                     {
                         whileLoopStack.Pop();
                     }
                     else
                     {
-                        whileLoopStack.Push(DILInstruction.StartLoop);
+                        whileLoopStack.Push(LanguageInstruction.StartLoop);
                     }
 
                     EmitInstruction(ilg, instruction);
@@ -311,10 +311,10 @@ namespace YABFcompiler
         /// 
         /// Otherwise, it returns the operation with the excess total.
         /// </summary>
-        private DILInstruction? AreLoopOperationsBalanced()
+        private LanguageInstruction? AreLoopOperationsBalanced()
         {
-            int totalStartLoopOperations = instructions.Where(instruction => instruction == DILInstruction.StartLoop).Count(),
-                totalEndLoopOperations = instructions.Where(instruction => instruction == DILInstruction.EndLoop).Count();
+            int totalStartLoopOperations = instructions.Where(instruction => instruction == LanguageInstruction.StartLoop).Count(),
+                totalEndLoopOperations = instructions.Where(instruction => instruction == LanguageInstruction.EndLoop).Count();
 
             if (totalStartLoopOperations == totalEndLoopOperations)
             {
@@ -323,10 +323,10 @@ namespace YABFcompiler
 
             if (totalStartLoopOperations > totalEndLoopOperations)
             {
-                return DILInstruction.StartLoop;
+                return LanguageInstruction.StartLoop;
             }
 
-            return DILInstruction.EndLoop;
+            return LanguageInstruction.EndLoop;
         }
 
         /// <summary>
@@ -338,12 +338,12 @@ namespace YABFcompiler
         /// A simple loop also returns to the starting position after execution.  Meaning that the position of StartLoop is equal to the position of EndLoop.
         /// </summary>
         /// <returns></returns>
-        private DILInstruction[] IsSimpleLoop(int index)
+        private LanguageInstruction[] IsSimpleLoop(int index)
         {
             var loopInstructions = GetLoopInstructions(index);
             bool containsIO = loopInstructions.Any(i =>
-                i == DILInstruction.Input || i == DILInstruction.Output
-                || i == DILInstruction.StartLoop || i == DILInstruction.EndLoop // I'm excluding nested loops for now
+                i == LanguageInstruction.Input || i == LanguageInstruction.Output
+                || i == LanguageInstruction.StartLoop || i == LanguageInstruction.EndLoop // I'm excluding nested loops for now
                 );
 
             if (containsIO /* and nested loops */)
@@ -351,8 +351,8 @@ namespace YABFcompiler
                 return null;
             }
 
-            int totalIncPtrs = loopInstructions.Count(i => i == DILInstruction.IncPtr),
-                totalDecPtrs = loopInstructions.Count(i => i == DILInstruction.DecPtr);
+            int totalIncPtrs = loopInstructions.Count(i => i == LanguageInstruction.IncPtr),
+                totalDecPtrs = loopInstructions.Count(i => i == LanguageInstruction.DecPtr);
 
             var returnsToStartLoopPosition = totalDecPtrs == totalIncPtrs;
 
@@ -383,7 +383,7 @@ namespace YABFcompiler
         /// <param name="index"></param>
         /// <param name="stopWalking"></param>
         /// <returns></returns>
-        private WalkResults SimpleWalk(IEnumerable<DILInstruction> operations, int index, int stopWalking)
+        private WalkResults SimpleWalk(IEnumerable<LanguageInstruction> operations, int index, int stopWalking)
         {
             int ptrIndex = 0;
             var domain = new SortedDictionary<int, int>();
@@ -394,10 +394,10 @@ namespace YABFcompiler
             {
                 switch (instruction)
                 {
-                    case DILInstruction.IncPtr: ptrIndex++; break;
-                    case DILInstruction.DecPtr: ptrIndex--; break;
-                    case DILInstruction.Inc: AddOperationToDomain(domain, ptrIndex); break;
-                    case DILInstruction.Dec: AddOperationToDomain(domain, ptrIndex, -1); break;
+                    case LanguageInstruction.IncPtr: ptrIndex++; break;
+                    case LanguageInstruction.DecPtr: ptrIndex--; break;
+                    case LanguageInstruction.Inc: AddOperationToDomain(domain, ptrIndex); break;
+                    case LanguageInstruction.Dec: AddOperationToDomain(domain, ptrIndex, -1); break;
                 }
             }
 
@@ -408,8 +408,8 @@ namespace YABFcompiler
         {
             var end = instructions.Length;
             int whereToStop = Math.Min(Math.Min(
-                Math.Min(GetNextInstructionIndex(index, DILInstruction.StartLoop) ?? end, GetNextInstructionIndex(index, DILInstruction.Input) ?? end),
-                GetNextInstructionIndex(index, DILInstruction.Output) ?? end), GetNextInstructionIndex(index, DILInstruction.EndLoop) ?? end);
+                Math.Min(GetNextInstructionIndex(index, LanguageInstruction.StartLoop) ?? end, GetNextInstructionIndex(index, LanguageInstruction.Input) ?? end),
+                GetNextInstructionIndex(index, LanguageInstruction.Output) ?? end), GetNextInstructionIndex(index, LanguageInstruction.EndLoop) ?? end);
 
             return SimpleWalk(instructions, index, whereToStop);
         }
@@ -467,7 +467,7 @@ namespace YABFcompiler
         /// </summary>
         /// <param name="index">The index of the StartLoop instruction</param>
         /// <returns></returns>
-        private DILInstruction[] GetLoopInstructions(int index)
+        private LanguageInstruction[] GetLoopInstructions(int index)
         {
             var closingEndLoopIndex = GetNextClosingLoopIndex(index).Value;
             return instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
@@ -514,12 +514,12 @@ namespace YABFcompiler
 
             for (int i = index + 1; i < instructions.Length; i++)
             {
-                if (instructions[i] == DILInstruction.StartLoop)
+                if (instructions[i] == LanguageInstruction.StartLoop)
                 {
                     stack += 1;
                 }
 
-                if (instructions[i] == DILInstruction.EndLoop)
+                if (instructions[i] == LanguageInstruction.EndLoop)
                 {
                     if (stack > 0)
                     {
@@ -534,7 +534,7 @@ namespace YABFcompiler
             return null;
         }
 
-        private int? GetNextInstructionIndex(int index, DILInstruction instruction)
+        private int? GetNextInstructionIndex(int index, LanguageInstruction instruction)
         {
             for (int i = index; i < instructions.Length; i++)
             {
@@ -550,7 +550,7 @@ namespace YABFcompiler
         private MatchingOperationChanges GetMatchingOperationChanges(int index)
         {
             int total = 0, totalNumberOfChanges = 0;
-            DILInstruction currentInstruction = instructions[index],
+            LanguageInstruction currentInstruction = instructions[index],
                            matchingInstruction = ~currentInstruction;
 
             for (int i = index; i < instructions.Length; i++)
@@ -570,15 +570,15 @@ namespace YABFcompiler
         }
 
         #region Instruction emitters
-        private void EmitInstruction(ILGenerator ilg, DILInstruction instruction, int value = 1)
+        private void EmitInstruction(ILGenerator ilg, LanguageInstruction instruction, int value = 1)
         {
             switch (instruction)
             {
-                case DILInstruction.IncPtr: IncrementPtr(ilg, value); break;
-                case DILInstruction.DecPtr: DecrementPtr(ilg, value); break;
-                case DILInstruction.Inc: Increment(ilg, value); break;
-                case DILInstruction.Dec: Decrement(ilg, value); break;
-                case DILInstruction.Output:
+                case LanguageInstruction.IncPtr: IncrementPtr(ilg, value); break;
+                case LanguageInstruction.DecPtr: DecrementPtr(ilg, value); break;
+                case LanguageInstruction.Inc: Increment(ilg, value); break;
+                case LanguageInstruction.Dec: Decrement(ilg, value); break;
+                case LanguageInstruction.Output:
                     {
                         ilg.Emit(OpCodes.Ldloc, array);
                         ilg.Emit(OpCodes.Ldloc, ptr);
@@ -586,7 +586,7 @@ namespace YABFcompiler
                         ilg.EmitCall(OpCodes.Call, consoleWriteMethodInfo, null);
                     }
                     break;
-                case DILInstruction.Input:
+                case LanguageInstruction.Input:
                     {
                         ilg.Emit(OpCodes.Ldloc, array);
                         ilg.Emit(OpCodes.Ldloc, ptr);
@@ -595,7 +595,7 @@ namespace YABFcompiler
                         ilg.Emit(OpCodes.Stelem_I2);
                     }
                     break;
-                case DILInstruction.StartLoop:
+                case LanguageInstruction.StartLoop:
                     {
                         var L_0008 = ilg.DefineLabel();
                         ilg.Emit(OpCodes.Br, L_0008);
@@ -606,7 +606,7 @@ namespace YABFcompiler
                         loopStack.Push(L_0004);
                     }
                     break;
-                case DILInstruction.EndLoop:
+                case LanguageInstruction.EndLoop:
                     {
                         Label go = loopStack.Pop(), mark = loopStack.Pop();
                         ilg.MarkLabel(mark);

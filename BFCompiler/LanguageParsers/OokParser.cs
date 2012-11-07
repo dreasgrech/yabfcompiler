@@ -6,7 +6,7 @@ namespace YABFcompiler.LanguageParsers
     internal class OokParser : Parser
     {
         public OokParser() : base(
-            new Dictionary<string, DILInstruction> { { "Ook.Ook?", DILInstruction.IncPtr }, { "Ook?Ook.", DILInstruction.DecPtr }, { "Ook.Ook.", DILInstruction.Inc }, { "Ook!Ook!", DILInstruction.Dec }, { "Ook!Ook.", DILInstruction.Output }, { "Ook.Ook!", DILInstruction.Input }, { "Ook!Ook?", DILInstruction.StartLoop }, { "Ook?Ook!", DILInstruction.EndLoop } })
+            new Dictionary<string, LanguageInstruction> { { "Ook.Ook?", LanguageInstruction.IncPtr }, { "Ook?Ook.", LanguageInstruction.DecPtr }, { "Ook.Ook.", LanguageInstruction.Inc }, { "Ook!Ook!", LanguageInstruction.Dec }, { "Ook!Ook.", LanguageInstruction.Output }, { "Ook.Ook!", LanguageInstruction.Input }, { "Ook!Ook?", LanguageInstruction.StartLoop }, { "Ook?Ook!", LanguageInstruction.EndLoop } })
         {
 ;
         }

@@ -7,16 +7,16 @@ namespace YABFcompiler
 
     public abstract class Parser
     {
-        protected Dictionary<string,DILInstruction> AllowedInstructions { get; private set; }
+        protected Dictionary<string,LanguageInstruction> AllowedInstructions { get; private set; }
         protected int MinimumTokenLength { get; private set; }
 
-        protected Parser(Dictionary<string,DILInstruction> instructions)
+        protected Parser(Dictionary<string,LanguageInstruction> instructions)
         {
             AllowedInstructions = instructions;
             MinimumTokenLength = instructions.Min(d => d.Key.Length);
         }
 
-        public IEnumerable<DILInstruction> GenerateDIL(string source)
+        public IEnumerable<LanguageInstruction> GenerateDIL(string source)
         {
             return GetTokens(source).Select(token => AllowedInstructions[token]);
         }

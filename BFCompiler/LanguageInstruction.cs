@@ -4,12 +4,12 @@ namespace YABFcompiler
     using System;
 
     /// <summary>
-    /// Dreas Intermediate Language instruction
+    /// A representation for the language instructions
     /// 
     /// I'm using the bitwise complement operator to denote opposites
     /// </summary>
     [Flags]
-    public enum DILInstruction
+    public enum LanguageInstruction
     {
         IncPtr = 0x1,
         DecPtr = ~IncPtr,
