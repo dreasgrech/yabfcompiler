@@ -1,9 +1,8 @@
 ﻿
-using System.Linq;
-
 namespace YABFcompiler
 {
     using System.Collections.Generic;
+    using System.Linq;
 
     class Loop
     {
@@ -18,12 +17,19 @@ namespace YABFcompiler
             NestedLoops = nestedLoops;
         }
 
-        public static Loop Construct(DILInstruction[] instructions, int index)
+        /// <summary>
+        /// Constructs a Loop given a set of instructions and 
+        /// an offset of the position of where the loop starts
+        /// </summary>
+        /// <param name="instructions"></param>
+        /// <param name="offset">The index of the StartLoop instruction</param>
+        /// <returns></returns>
+        public static Loop Construct(DILInstruction[] instructions, int offset)
         {
-            var loopInstructions = GetLoopInstructions(instructions, index);
-            var nestedLoops = ContainsNestedLoops(loopInstructions);
+            var loopInstructions = GetLoopInstructions(instructions, offset);
+            var nestedLoops = GetNestedLoops(loopInstructions);
 
-            return new Loop(index, loopInstructions, nestedLoops);
+            return new Loop(offset, loopInstructions, nestedLoops);
         }
 
         /// <summary>
@@ -48,16 +54,14 @@ namespace YABFcompiler
         }
 
         /// <summary>
-        /// Returns the loop instructions if a clearance pattern is detected
+        /// Returns true if a clearance pattern is detected with this loop
         /// 
         /// The following patterns are currently detected:
         ///     [-], [+]
         /// </summary>
-        /// <param name="index"></param>
         /// <returns></returns>
         public bool IsClearanceLoop()
         {
-            //var loopInstructions = Instructions;
             if (Instructions.Length == 1) // [-] or [+]
             {
                 if (Instructions[0] == DILInstruction.Dec || Instructions[0] == DILInstruction.Inc)
@@ -70,9 +74,8 @@ namespace YABFcompiler
         }
 
         /// <summary>
-        /// Returns the instructions the loop contains if an infinite loop pattern is detected
+        /// Returns true if an infinite loop pattern is detected with this loop
         /// </summary>
-        /// <param name="index">The index of the StartLoop instruction</param>
         /// <returns></returns>
         public bool IsInfiniteLoopPattern()
         {
@@ -81,36 +84,28 @@ namespace YABFcompiler
                 return true;
             }
 
-            //var numberOfPtrMovements = loopInstructions.Count(instruction => instruction == DILInstruction.IncPtr || instruction == DILInstruction.DecPtr);
-
-            //if (numberOfPtrMovements > 0)
-            //{
-            //    var containsOnlyPtrMovements = loopInstructions.Length - numberOfPtrMovements == 0;
-            //    if (containsOnlyPtrMovements)
-            //    {
-
-            //    }
-            //}
-
             return false;
         }
 
         /// <summary>
-        /// Returns the instructions the loop contains
+        /// Given a set of instructions and an offset of where the loop starts,
+        /// this method returns the operations that the loop contains
         /// </summary>
-        /// <param name="index">The index of the StartLoop instruction</param>
+        /// <param name="instructions"></param>
+        /// <param name="offset">The index of the StartLoop instruction</param>
         /// <returns></returns>
-        private static DILInstruction[] GetLoopInstructions(DILInstruction[] instructions, int index)
+        private static DILInstruction[] GetLoopInstructions(DILInstruction[] instructions, int offset)
         {
-            var closingEndLoopIndex = GetNextClosingLoopIndex(instructions, index).Value;
-            return instructions.Skip(index + 1).Take(closingEndLoopIndex - index - 1).ToArray();
+            var closingEndLoopIndex = GetNextClosingLoopIndex(instructions, offset).Value;
+            return instructions.Skip(offset + 1).Take(closingEndLoopIndex - offset - 1).ToArray();
         }
 
         /// <summary>
-        /// Returns a list of the index of the StartLoop operation for the nested loops.
+        /// Given a set of instructions, this method returns a collection of 
+        /// nested loops contained in the set.
         /// </summary>
         /// <returns></returns>
-        private static List<Loop> ContainsNestedLoops(DILInstruction[] instructions)
+        private static List<Loop> GetNestedLoops(DILInstruction[] instructions)
         {
             var nestedLoops = new List<Loop>();
             var loopInstructions = instructions;
@@ -131,7 +126,7 @@ namespace YABFcompiler
                 if (ins == DILInstruction.StartLoop)
                 {
                     var lInstructions = GetLoopInstructions(instructions, i);
-                    var loop = new Loop(i, lInstructions, ContainsNestedLoops(lInstructions));
+                    var loop = new Loop(i, lInstructions, GetNestedLoops(lInstructions));
                     nestedLoops.Add(loop);
 
                     i = GetNextClosingLoopIndex(instructions, i).Value;
@@ -139,11 +134,32 @@ namespace YABFcompiler
             }
 
             return nestedLoops;
-        } 
+        }
 
-        public void AddNestedLoops(List<Loop> loop)
+        private static int? GetNextClosingLoopIndex(DILInstruction[] instructions, int index)
         {
-            NestedLoops.AddRange(loop);
+            int stack = 0;
+
+            for (int i = index + 1; i < instructions.Length; i++)
+            {
+                if (instructions[i] == DILInstruction.StartLoop)
+                {
+                    stack += 1;
+                }
+
+                if (instructions[i] == DILInstruction.EndLoop)
+                {
+                    if (stack > 0)
+                    {
+                        stack--;
+                        continue;
+                    }
+
+                    return i;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -194,32 +210,6 @@ namespace YABFcompiler
         }
 
 
-
-        private static int? GetNextClosingLoopIndex(DILInstruction[] instructions, int index)
-        {
-            int stack = 0;
-
-            for (int i = index + 1; i < instructions.Length; i++)
-            {
-                if (instructions[i] == DILInstruction.StartLoop)
-                {
-                    stack += 1;
-                }
-
-                if (instructions[i] == DILInstruction.EndLoop)
-                {
-                    if (stack > 0)
-                    {
-                        stack--;
-                        continue;
-                    }
-
-                    return i;
-                }
-            }
-
-            return null;
-        }
 
         /// <summary>
         /// Returns the index of the EndLoop for the given StartLoop
