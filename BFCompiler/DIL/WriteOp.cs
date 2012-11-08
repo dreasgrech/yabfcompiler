@@ -8,5 +8,15 @@ namespace YABFcompiler.DIL
 
     class WriteOp:DILInstruction
     {
+        public ConstantValue Constant { get; private set; }
+
+        public WriteOp()
+        {
+            
+        }
+        public WriteOp(ConstantValue constant)
+        {
+            Constant = constant;
+        }
     }
 }

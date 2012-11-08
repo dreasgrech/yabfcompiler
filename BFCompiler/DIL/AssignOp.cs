@@ -6,20 +6,20 @@ namespace YABFcompiler.DIL
     using System.Linq;
     using System.Text;
 
-    class AdditionMemoryOp : DILInstruction
+    class AssignOp : DILInstruction
     {
         public int Offset { get; set; }
-        public int Scalar { get; set; }
+        public int Value { get; set; }
         public ConstantValue Constant { get; set; }
 
-        public AdditionMemoryOp(int offset, int scalar, ConstantValue constant)
+        public AssignOp(int offset, int value, ConstantValue constant)
         {
             Offset = offset;
-            Scalar = scalar;
+            Value = value;
             Constant = constant;
         }
 
-        public AdditionMemoryOp(int offset, int scalar):this(offset, scalar, null)
+        public AssignOp(int offset, int value) : this(offset, value, null)
         {
             
         }

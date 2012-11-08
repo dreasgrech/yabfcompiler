@@ -1,5 +1,6 @@
 ﻿
 using System;
+using YABFcompiler.DIL;
 
 namespace YABFcompiler
 {
@@ -25,12 +26,14 @@ namespace YABFcompiler
         /// </summary>
         public int TotalInstructionsCovered { get; private set; }
 
+        public SortedDictionary<int, DILInstruction> MiscOperations { get; private set; }
 
-        public WalkResults(SortedDictionary<int, int> domain, int endPtrPosition, int totalInstructionsCovered)
+        public WalkResults(SortedDictionary<int, int> domain, int endPtrPosition, int totalInstructionsCovered, SortedDictionary<int, DILInstruction> miscOperations = null)
         {
             Domain = domain;
             EndPtrPosition = endPtrPosition;
             TotalInstructionsCovered = totalInstructionsCovered;
+            MiscOperations = miscOperations;
         }
 
         public void IterateDomain(Action<int,int> callback)

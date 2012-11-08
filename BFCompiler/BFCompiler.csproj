@@ -47,7 +47,10 @@
     <Compile Include="CompilationOptions.cs" />
     <Compile Include="CompilerFactory.cs" />
     <Compile Include="DIL\AdditionMemoryOp.cs" />
+    <Compile Include="DIL\AssignOp.cs" />
+    <Compile Include="DIL\ConstantValue.cs" />
     <Compile Include="DIL\DILInstruction.cs" />
+    <Compile Include="DIL\DILOperationSet.cs" />
     <Compile Include="DIL\LoopOp.cs" />
     <Compile Include="DIL\MultiplicationMemoryOp.cs" />
     <Compile Include="DIL\PtrOp.cs" />

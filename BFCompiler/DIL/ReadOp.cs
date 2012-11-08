@@ -6,7 +6,18 @@ namespace YABFcompiler.DIL
     using System.Linq;
     using System.Text;
 
-    class ReadOp:DILInstruction
+    internal class ReadOp : DILInstruction
     {
+        public ConstantValue Constant { get; private set; }
+
+        public ReadOp()
+        {
+
+        }
+
+        public ReadOp(ConstantValue constant)
+        {
+            Constant = constant;
+        }
     }
 }
