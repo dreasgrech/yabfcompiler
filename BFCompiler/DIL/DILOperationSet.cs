@@ -259,6 +259,7 @@ namespace YABFcompiler.DIL
                 }
             } while (wasOptimized);
 
+
             if (CanWeSubstituteConstants())
             {
                 if (SubstituteConstants(ref optimized))
@@ -267,7 +268,64 @@ namespace YABFcompiler.DIL
                 }
             }
 
+            var stringWalkResults = StringWalk();
+            if (stringWalkResults.Strings.Count > 0)
+            {
+                optimized.Clear();
+                foreach (var s in stringWalkResults.Strings)
+                {
+                    optimized.Add(new WriteLiteralOp(s.Value));
+                }
+            }
+            //if (!String.IsNullOrEmpty(stringWalkResults))
+            //{
+            //    
+            //    optimized.Add(new WriteLiteralOp(stringWalkResults));
+            //}
+
             return wasOptimized;
+        }
+
+        private StringWalkResults StringWalk()
+        {
+            var domain = new Dictionary<int, char>();
+            var strings = new Dictionary<int, string>();
+
+            var containsOnlyAdditionAndWrites = this.All(i => i.GetType() == typeof (AdditionMemoryOp) || i.GetType() == typeof (WriteOp));
+            if (containsOnlyAdditionAndWrites)
+            {
+                for (int i = 0; i < this.Count; i++)
+                {
+                    var instruction = this[i];
+                    var add = instruction as AdditionMemoryOp;
+                    if (add != null)
+                    {
+                        if (domain.ContainsKey(add.Offset))
+                        {
+                            domain[add.Offset] += (char)add.Scalar;
+                        } else
+                        {
+                            domain[add.Offset] = (char)add.Scalar;
+                        }
+                    }
+
+                    var write = instruction as WriteOp;
+                    if (write != null)
+                    {
+                        if (strings.ContainsKey(write.Constant.Value))
+                        {
+                            strings[write.Constant.Value] += domain[write.Constant.Value].ToString();
+                        } else
+                        {
+                            strings[write.Constant.Value] = domain[write.Constant.Value].ToString();
+                        }
+                    }
+                }
+
+                return new StringWalkResults(strings);
+            }
+
+            return null;
         }
 
         private bool AreDILOperationSetsIdentical(List<DILInstruction> otherSet)

@@ -11,7 +11,7 @@ namespace YABFcompiler.DIL
     {
         public ConstantValue Constant { get; private set; }
 
-        private readonly MethodInfo consoleWriteMethodInfo = typeof(Console).GetMethod("Write", new[] { typeof(char) });
+        private static readonly MethodInfo consoleWriteMethodInfo = typeof(Console).GetMethod("Write", new[] { typeof(char) });
 
         public WriteOp()
         {

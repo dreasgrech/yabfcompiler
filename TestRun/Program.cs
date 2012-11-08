@@ -9,7 +9,7 @@ namespace TestRun
         {
             int index = 0;
             char[] chArray = new char[0x493e0];
-            chArray[index + 1] = (char)(chArray[index + 1] + 'D');
+            Console.Write("Hello string");
 
         }
     }
