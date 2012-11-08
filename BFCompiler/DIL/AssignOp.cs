@@ -1,12 +1,8 @@
 ﻿
-using System.Diagnostics;
-
 namespace YABFcompiler.DIL
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
+    using System.Diagnostics;
+    using System.Reflection.Emit;
 
     [DebuggerDisplay("Ass => Offset: {Offset}, Value = {Value}")]
     class AssignOp : DILInstruction
@@ -25,6 +21,22 @@ namespace YABFcompiler.DIL
         public AssignOp(int offset, int value) : this(offset, value, null)
         {
             
+        }
+
+        public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr, ConstantValue constant = null, int value = 1)
+        {
+            ilg.Emit(OpCodes.Ldloc, array);
+            if (constant != null)
+            {
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
+            }
+            else
+            {
+                ilg.Emit(OpCodes.Ldloc, ptr);
+            }
+
+            ILGeneratorHelpers.Load32BitIntegerConstant(ilg, value);
+            ilg.Emit(OpCodes.Stelem_I2);
         }
     }
 }

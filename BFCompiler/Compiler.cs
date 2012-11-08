@@ -83,8 +83,6 @@ namespace YABFcompiler
         public CompilationOptions Options { get; private set; }
 
         private LanguageInstruction[] instructions;
-        private readonly MethodInfo consoleWriteMethodInfo = typeof(Console).GetMethod("Write", new[] { typeof(char) });
-        private readonly MethodInfo consoleReadMethodInfo = typeof(Console).GetMethod("Read");
         private DILOperationSet dilInstructions; 
         public event EventHandler<CompilationWarningEventArgs> OnWarning;
 
@@ -134,12 +132,12 @@ namespace YABFcompiler
                     previousInstruction = instructions[i - 1];
                 }
 
-                // If we're in debug mode, just emit the instruction as is and continue
-                if (OptionEnabled(CompilationOptions.DebugMode))
-                {
-                    EmitInstruction(ilg, instruction);
-                    continue;
-                }
+                //// If we're in debug mode, just emit the instruction as is and continue
+                //if (OptionEnabled(CompilationOptions.DebugMode))
+                //{
+                //    EmitInstruction(ilg, instruction);
+                //    continue;
+                //}
 
                 /* Start of Optimization #3 */
                 if ((instruction == LanguageInstruction.Inc || instruction == LanguageInstruction.Dec))
@@ -202,53 +200,53 @@ namespace YABFcompiler
                         i += loop.Instructions.Length + 1;
                         continue;
 
-                        if (loop.IsSimple())
-                        {
+                        //if (loop.IsSimple())
+                        //{
                             
-                        }
+                        //}
 
                         /* Start of Optimization #4*/
-                        if (loop.IsClearanceLoop())
-                        {
-                            AssignValue(ilg, 0);
-                            i += loop.Instructions.Length + 1;
-                            continue;
-                        }
+                        //if (loop.IsClearanceLoop())
+                        //{
+                        //    AssignValue(ilg, 0);
+                        //    i += loop.Instructions.Length + 1;
+                        //    continue;
+                        //}
                         /* End of Optimization #4*/
 
-                        if (loop.IsInfiniteLoopPattern())
-                        {
-                            if (OnWarning != null)
-                            {
-                                OnWarning(this,
-                                          new CompilationWarningEventArgs(
-                                              "Infinite loop pattern detected at cell {0}: [{1}]", i,
-                                              String.Concat(loop.Instructions)));
-                            }
-                        }
+                        //if (loop.IsInfiniteLoopPattern())
+                        //{
+                        //    if (OnWarning != null)
+                        //    {
+                        //        OnWarning(this,
+                        //                  new CompilationWarningEventArgs(
+                        //                      "Infinite loop pattern detected at cell {0}: [{1}]", i,
+                        //                      String.Concat(loop.Instructions)));
+                        //    }
+                        //}
 
-                        //var isSimple = loop.IsSimple();
+                        ////var isSimple = loop.IsSimple();
 
                         /* Start of Optimization #5 */
-                        // TODO: Currently working on Optimization #5 for nested loops
-                        if (IsSimpleLoop(i) != null) // TODO: needs to be changed to loop.IsSimple()
-                        {
-                            //var walkResults = CalculateSimpleWalkResults(i + 1);
+                        //// TODO: Currently working on Optimization #5 for nested loops
+                        //if (IsSimpleLoop(i) != null) // TODO: needs to be changed to loop.IsSimple()
+                        //{
+                        //    //var walkResults = CalculateSimpleWalkResults(i + 1);
 
-                            //walkResults.IterateDomain((cellIndex, cellDelta) =>
-                            //                              {
-                            //                                  if (cellIndex == 0)
-                            //                                  {
-                            //                                      AssignValue(ilg, 0);
-                            //                                      return;
-                            //                                  }
+                        //    //walkResults.IterateDomain((cellIndex, cellDelta) =>
+                        //    //                              {
+                        //    //                                  if (cellIndex == 0)
+                        //    //                                  {
+                        //    //                                      AssignValue(ilg, 0);
+                        //    //                                      return;
+                        //    //                                  }
 
-                            //                                  MultiplyByIndexValue(ilg, cellIndex, cellDelta);
-                            //                              });
+                        //    //                                  MultiplyByIndexValue(ilg, cellIndex, cellDelta);
+                        //    //                              });
 
-                            //i += walkResults.TotalInstructionsCovered + 1;
-                            //continue;
-                        }
+                        //    //i += walkResults.TotalInstructionsCovered + 1;
+                        //    //continue;
+                        //}
                         /* End of Optimization #5 */
                     }
 
@@ -276,23 +274,23 @@ namespace YABFcompiler
                  */
                 if (repetitionTotal > ThresholdForLoopIntroduction)
                 {
-                    ILForLoop now;
-                    if (forLoopSpaceOptimizationStack.Count > 0)
-                    {
-                        var last = forLoopSpaceOptimizationStack.Pop();
-                        now = ilg.StartForLoop(last.Counter, last.Max, 0, repetitionTotal);
-                    }
-                    else
-                    {
-                        now = ilg.StartForLoop(0, repetitionTotal);
-                    }
+                    //ILForLoop now;
+                    //if (forLoopSpaceOptimizationStack.Count > 0)
+                    //{
+                    //    var last = forLoopSpaceOptimizationStack.Pop();
+                    //    now = ilg.StartForLoop(last.Counter, last.Max, 0, repetitionTotal);
+                    //}
+                    //else
+                    //{
+                    //    now = ilg.StartForLoop(0, repetitionTotal);
+                    //}
 
-                    forLoopSpaceOptimizationStack.Push(now);
+                    //forLoopSpaceOptimizationStack.Push(now);
 
-                    EmitInstruction(ilg, instruction);
-                    ilg.EndForLoop(now);
+                    //EmitInstruction(ilg, instruction);
+                    //ilg.EndForLoop(now);
 
-                    i += repetitionTotal - 1;
+                    //i += repetitionTotal - 1;
                 }
                 else
                 {
@@ -306,14 +304,15 @@ namespace YABFcompiler
                 }
             }
 
-            while (dilInstructions.Optimize(ref dilInstructions))
+            // If we're not in debug mode, optimize the shit out of it!
+            if (!OptionEnabled(CompilationOptions.DebugMode))
             {
+                while (dilInstructions.Optimize(ref dilInstructions))
+                {
+                }
             }
 
-
             EmitDIL(ilg);
-
-
 
             ilg.Emit(OpCodes.Ret);
 
@@ -611,250 +610,120 @@ namespace YABFcompiler
                 if (dilInstruction is AdditionMemoryOp)
                 {
                     var add = (AdditionMemoryOp) dilInstruction;
-                    if (add.Scalar > 0)
-                    {
-                        Increment(ilg, add.Constant, add.Offset, add.Scalar);
-                    } else
-                    {
-                        Decrement(ilg, add.Constant, add.Offset, - add.Scalar);
-                    }
+                    add.Emit(ilg, array, ptr, add.Constant);
                 } 
                 else if (dilInstruction is PtrOp)
                 {
                     var ptrOp = (PtrOp) dilInstruction;
-                    if (ptrOp.Delta > 0)
-                    {
-                        IncrementPtr(ilg, ptrOp.Delta);
-                    } else
-                    {
-                        DecrementPtr(ilg, -ptrOp.Delta);
-                    }
+                    ptrOp.Emit(ilg,ptr);
                 } 
                 else if (dilInstruction is WriteOp)
                 {
-                    Output(ilg, ((WriteOp)dilInstruction).Constant);
+                    var write = (WriteOp) dilInstruction;
+                    write.Emit(ilg, array, ptr, write.Constant);
                 } 
                 else if (dilInstruction is ReadOp)
                 {
-                    Input(ilg, ((ReadOp)dilInstruction).Constant);
+                    var input = (ReadOp) dilInstruction;
+                    input.Emit(ilg, array, ptr, input.Constant);
                 } else if (dilInstruction is AssignOp)
                 {
                     var assign = dilInstruction as AssignOp;
-                    AssignValue(ilg, assign.Constant, assign.Value);
+                    assign.Emit(ilg, array, ptr, assign.Constant, assign.Value);
                 }
             }
         }
         #region Instruction emitters
-        private void EmitInstruction(ILGenerator ilg, LanguageInstruction instruction, int value = 1)
-        {
-            switch (instruction)
-            {
-                case LanguageInstruction.IncPtr: IncrementPtr(ilg, value); break;
-                case LanguageInstruction.DecPtr: DecrementPtr(ilg, value); break;
-                case LanguageInstruction.Inc: Increment(ilg, value); break;
-                case LanguageInstruction.Dec: Decrement(ilg, value); break;
-                case LanguageInstruction.Output: Output(ilg); break;
-                case LanguageInstruction.Input: Input(ilg); break;
-                case LanguageInstruction.StartLoop:
-                    {
-                        var L_0008 = ilg.DefineLabel();
-                        ilg.Emit(OpCodes.Br, L_0008);
-                        loopStack.Push(L_0008);
+        //private void EmitInstruction(ILGenerator ilg, LanguageInstruction instruction, int value = 1)
+        //{
+        //    switch (instruction)
+        //    {
+        //        case LanguageInstruction.IncPtr: IncrementPtr(ilg, value); break;
+        //        case LanguageInstruction.DecPtr: DecrementPtr(ilg, value); break;
+        //        case LanguageInstruction.Inc: Increment(ilg, value); break;
+        //        case LanguageInstruction.Dec: Decrement(ilg, value); break;
+        //        case LanguageInstruction.Output: Output(ilg); break;
+        //        case LanguageInstruction.Input: Input(ilg); break;
+        //        case LanguageInstruction.StartLoop:
+        //            {
+        //                var L_0008 = ilg.DefineLabel();
+        //                ilg.Emit(OpCodes.Br, L_0008);
+        //                loopStack.Push(L_0008);
 
-                        var L_0004 = ilg.DefineLabel();
-                        ilg.MarkLabel(L_0004);
-                        loopStack.Push(L_0004);
-                    }
-                    break;
-                case LanguageInstruction.EndLoop:
-                    {
-                        Label go = loopStack.Pop(), mark = loopStack.Pop();
-                        ilg.MarkLabel(mark);
-                        ilg.Emit(OpCodes.Ldloc, array);
-                        ilg.Emit(OpCodes.Ldloc, ptr);
-                        ilg.Emit(OpCodes.Ldelem_U2);
-                        ilg.Emit(OpCodes.Brtrue, go);
-                    }
-                    break;
-            }
-        }
+        //                var L_0004 = ilg.DefineLabel();
+        //                ilg.MarkLabel(L_0004);
+        //                loopStack.Push(L_0004);
+        //            }
+        //            break;
+        //        case LanguageInstruction.EndLoop:
+        //            {
+        //                Label go = loopStack.Pop(), mark = loopStack.Pop();
+        //                ilg.MarkLabel(mark);
+        //                ilg.Emit(OpCodes.Ldloc, array);
+        //                ilg.Emit(OpCodes.Ldloc, ptr);
+        //                ilg.Emit(OpCodes.Ldelem_U2);
+        //                ilg.Emit(OpCodes.Brtrue, go);
+        //            }
+        //            break;
+        //    }
+        //}
 
-        private void Input(ILGenerator ilg, ConstantValue constant = null)
-        {
-            ilg.Emit(OpCodes.Ldloc, array);
-            if (constant != null)
-            {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
-            }
-            else
-            {
-                ilg.Emit(OpCodes.Ldloc, ptr);
-            }
+        //private void Input(ILGenerator ilg, ConstantValue constant = null)
+        //{
+        //    ilg.Emit(OpCodes.Ldloc, array);
+        //    if (constant != null)
+        //    {
+        //        ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
+        //    }
+        //    else
+        //    {
+        //        ilg.Emit(OpCodes.Ldloc, ptr);
+        //    }
 
-            ilg.EmitCall(OpCodes.Call, consoleReadMethodInfo, null);
-            ilg.Emit(OpCodes.Conv_U2);
-            ilg.Emit(OpCodes.Stelem_I2);
-        }
+        //    ilg.EmitCall(OpCodes.Call, consoleReadMethodInfo, null);
+        //    ilg.Emit(OpCodes.Conv_U2);
+        //    ilg.Emit(OpCodes.Stelem_I2);
+        //}
 
-        private void Output(ILGenerator ilg, ConstantValue constant = null)
-        {
-            ilg.Emit(OpCodes.Ldloc, array);
-            if (constant != null)
-            {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
-            } 
-            else
-            {
-                ilg.Emit(OpCodes.Ldloc, ptr);
-            }
-            ilg.Emit(OpCodes.Ldelem_U2);
-            ilg.EmitCall(OpCodes.Call, consoleWriteMethodInfo, null);
-        }
+        //private void Output(ILGenerator ilg, ConstantValue constant = null)
+        //{
+        //    ilg.Emit(OpCodes.Ldloc, array);
+        //    if (constant != null)
+        //    {
+        //        ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
+        //    } 
+        //    else
+        //    {
+        //        ilg.Emit(OpCodes.Ldloc, ptr);
+        //    }
+        //    ilg.Emit(OpCodes.Ldelem_U2);
+        //    ilg.EmitCall(OpCodes.Call, consoleWriteMethodInfo, null);
+        //}
 
-        /// <summary>
-        /// Emit instructions to assign an integer constant to the value of the current cell
-        /// </summary>
-        /// <param name="ilg"></param>
-        /// <param name="value"></param>
-        private void AssignValue(ILGenerator ilg, int value = 1)
-        {
-            AssignValue(ilg, null, value);
-        }
+        ///// <summary>
+        ///// Emit instructions to assign an integer constant to the value of the current cell
+        ///// </summary>
+        ///// <param name="ilg"></param>
+        ///// <param name="value"></param>
+        //private void AssignValue(ILGenerator ilg, int value = 1)
+        //{
+        //    AssignValue(ilg, null, value);
+        //}
 
-        private void AssignValue(ILGenerator ilg, ConstantValue constant, int value = 1)
-        {
-            ilg.Emit(OpCodes.Ldloc, array);
-            if (constant != null)
-            {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
-            } 
-            else
-            {
-                ilg.Emit(OpCodes.Ldloc, ptr);
-            }
-            ILGeneratorHelpers.Load32BitIntegerConstant(ilg, value);
-            ilg.Emit(OpCodes.Stelem_I2);
-        }
-
-
-        private void Increment(ILGenerator ilg, ConstantValue constant, int offset, int step = 1)
-        {
-            ilg.Emit(OpCodes.Ldloc, array);
-            if (constant != null)
-            {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
-            } else
-            {
-                ilg.Emit(OpCodes.Ldloc, ptr);
-                if (offset != 0)
-                {
-                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(offset));
-                    if (offset > 0)
-                    {
-                        ilg.Emit(OpCodes.Add);
-                    } else
-                    {
-                        ilg.Emit(OpCodes.Sub);
-                    }
-                }
-            }
-
-            ilg.Emit(OpCodes.Ldloc, array);
-            if (constant != null)
-            {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
-            }
-            else
-            {
-                ilg.Emit(OpCodes.Ldloc, ptr);
-                if (offset != 0)
-                {
-                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(offset));
-                    if (offset > 0)
-                    {
-                        ilg.Emit(OpCodes.Add);
-                    }
-                    else
-                    {
-                        ilg.Emit(OpCodes.Sub);
-                    }
-                }
-            }
-            ilg.Emit(OpCodes.Ldelem_U2);
-            ILGeneratorHelpers.Load32BitIntegerConstant(ilg, step);
-            ilg.Emit(OpCodes.Add);
-            ilg.Emit(OpCodes.Conv_U2);
-            ilg.Emit(OpCodes.Stelem_I2);
-        }
-
-        /// <summary>
-        /// Emit instructions to increment the value of the current cell by an integer constant
-        /// </summary>
-        private void Increment(ILGenerator ilg, int step = 1)
-        {
-            Increment(ilg, null, step);
-        }
-
-        private void Decrement(ILGenerator ilg, ConstantValue constantValue, int offset, int step = 1)
-        {
-            ilg.Emit(OpCodes.Ldloc, array);
-            if (constantValue != null)
-            {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constantValue.Value);
-            }
-            else
-            {
-                ilg.Emit(OpCodes.Ldloc, ptr);
-                if (offset != 0)
-                {
-                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(offset));
-                    if (offset > 0)
-                    {
-                        ilg.Emit(OpCodes.Add);
-                    }
-                    else
-                    {
-                        ilg.Emit(OpCodes.Sub);
-                    }
-                }
-            }
-
-            ilg.Emit(OpCodes.Ldloc, array);
-            if (constantValue != null)
-            {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constantValue.Value);
-            }
-            else
-            {
-                ilg.Emit(OpCodes.Ldloc, ptr);
-                if (offset != 0)
-                {
-                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(offset));
-                    if (offset > 0)
-                    {
-                        ilg.Emit(OpCodes.Add);
-                    }
-                    else
-                    {
-                        ilg.Emit(OpCodes.Sub);
-                    }
-                }
-            }
-
-            ilg.Emit(OpCodes.Ldelem_U2);
-            ILGeneratorHelpers.Load32BitIntegerConstant(ilg, step);
-            ilg.Emit(OpCodes.Sub);
-            ilg.Emit(OpCodes.Conv_U2);
-            ilg.Emit(OpCodes.Stelem_I2);
-        }
-
-        /// <summary>
-        /// Emit instructions to decrement the value of the current cell by an integer constant
-        /// </summary>
-        private void Decrement(ILGenerator ilg, int step = 1)
-        {
-            Decrement(ilg, null, step);
-        }
+        //private void AssignValue(ILGenerator ilg, ConstantValue constant, int value = 1)
+        //{
+        //    ilg.Emit(OpCodes.Ldloc, array);
+        //    if (constant != null)
+        //    {
+        //        ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
+        //    } 
+        //    else
+        //    {
+        //        ilg.Emit(OpCodes.Ldloc, ptr);
+        //    }
+        //    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, value);
+        //    ilg.Emit(OpCodes.Stelem_I2);
+        //}
 
         /// <summary>
         /// Given an offset of 2 and scalar of 3, generates:
@@ -925,21 +794,7 @@ namespace YABFcompiler
             ilg.Emit(OpCodes.Stelem_I2);
         }
 
-        /// <summary>
-        /// Emit instructions to increment the pointer position by an integer constant
-        /// </summary>
-        private void IncrementPtr(ILGenerator ilg, int step = 1)
-        {
-            ilg.Increment(ptr, step);
-        }
 
-        /// <summary>
-        /// Emit instructions to decrement the pointer position by an integer constant
-        /// </summary>
-        private void DecrementPtr(ILGenerator ilg, int step = 1)
-        {
-            ilg.Decrement(ptr, step);
-        }
         #endregion
 
         private AssemblyInfo CreateAssemblyAndEntryPoint(string filename)

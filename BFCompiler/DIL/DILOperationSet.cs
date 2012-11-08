@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Text;
-
+﻿
 namespace YABFcompiler.DIL
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+
     class DILOperationSet:List<DILInstruction>
     {
         public DILOperationSet(){}
@@ -219,11 +217,6 @@ namespace YABFcompiler.DIL
                     wasOptimized = false;
                 }
             } while (wasOptimized);
-
-            //if (wasOptimized)
-            //{
-            //    return true;
-            //}
 
             if (CanWeSubstituteConstants())
             {
