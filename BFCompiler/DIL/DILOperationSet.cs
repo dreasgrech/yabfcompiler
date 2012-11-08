@@ -41,7 +41,7 @@ namespace YABFcompiler.DIL
 
             var end = Count;
             int whereToStop = Math.Min(
-                Math.Min(GetNextInstructionIndex<ReadOp>(index) ?? end, GetNextInstructionIndex<WriteOp>(index) ?? end)
+                1 + Math.Min((GetNextInstructionIndex<ReadOp>(index) ?? end), GetNextInstructionIndex<WriteOp>(index) ?? end)
                 , GetNextInstructionIndex<LoopOp>(index) ?? end);
 
             var ins = this.Skip(index).Take(whereToStop - index).ToArray();
@@ -145,9 +145,29 @@ namespace YABFcompiler.DIL
             {
                 var instruction = optimized[i];
 
-                if (i == 0)
+                //if (i == 0)
+                //{
+                //    var assOp = instruction as AssignOp;
+                //    if (assOp != null && assOp.Offset == 0)
+                //    {
+                //        if (assOp.Value == 0)
+                //        {
+                //            optimized[0] = null;
+                //            continue;
+                //        }
+                //    }
+
+                //    var addOpp = instruction as AdditionMemoryOp;
+                //    if (addOpp != null)
+                //    {
+                //        optimized[0] = new AssignOp(addOpp.Offset, addOpp.Scalar);
+                //    }
+                //    //if (instruction is add)
+                //}
+
+                if (optimized[0] is AdditionMemoryOp || optimized[0] is AssignOp)
                 {
-                    var assOp = instruction as AssignOp;
+                    var assOp = optimized[0] as AssignOp;
                     if (assOp != null && assOp.Offset == 0)
                     {
                         if (assOp.Value == 0)
@@ -157,31 +177,34 @@ namespace YABFcompiler.DIL
                         }
                     }
 
-                    var addOpp = instruction as AdditionMemoryOp;
-                    if (addOpp != null)
+                    var addOpp = optimized[0] as AdditionMemoryOp;
+                    if (addOpp != null && addOpp.Offset == 0)
                     {
-                        optimized[0] = new AssignOp(addOpp.Offset, addOpp.Scalar);
+                        if (addOpp.Scalar == 0) // Trying to add +0 ?
+                        {
+                            optimized[0] = null;
+                        }
+                        else
+                        {
+                            optimized[0] = new AssignOp(addOpp.Offset, addOpp.Scalar);
+                        }
                     }
-                    //if (instruction is add)
                 }
 
-                var assign = instruction as AssignOp;
-                if (assign != null)
+                var removed = optimized.RemoveAll(o => o == null);
+                if (i != 0)
                 {
-                    if (i == 0 && assign.Value == 0)
-                    {
-                        optimized[i] = null;
-                        return true;
-                    }
+                    i -= removed;
                 }
 
                 var walk = Walk(i);
+                var tempSet = new DILOperationSet();
                 foreach (var cell in walk.Domain)
                 {
-                    //if (cell.Value != 0)
-                    //{
-                        newSet.Add(new AdditionMemoryOp(cell.Key, cell.Value));
-                    //}
+                    if (cell.Value != 0)
+                    {
+                    tempSet.Add(new AdditionMemoryOp(cell.Key, cell.Value));
+                    }
                     //else
                     //{
                     //    newSet.Add(new AssignOp(cell.Key, cell.Value));
@@ -190,39 +213,28 @@ namespace YABFcompiler.DIL
 
                 if (walk.EndPtrPosition != 0)
                 {
-                    newSet.Add(new PtrOp(walk.EndPtrPosition));
+                    tempSet.Add(new PtrOp(walk.EndPtrPosition));
                 }
 
                 foreach (var miscOperation in walk.MiscOperations)
                 {
-                    newSet.Add(miscOperation.Value);
+                    tempSet.Add(miscOperation.Value);
                 }
 
-                var add = optimized[i] as AdditionMemoryOp;
-                if (add != null)
-                {
-                    //if (i == 0 && add.Scalar == 0)
-                    //{
-                    //    newSet[i] = null;
-                    //    newSet.RemoveAll(o => o == null);
-                    //    continue;
-                    //    //optimized[i] = new AssignOp(add.Offset, add.Scalar);
-                    //    //return true;
-                    //}
-                }
+                newSet.AddRange(tempSet);
 
                 var setThatWasOptimized = optimized.Skip(i).Take(walk.TotalInstructionsCovered - i).ToList();
-                if (!newSet.AreDILOperationSetsIdentical(setThatWasOptimized))
+                if (!tempSet.AreDILOperationSetsIdentical(setThatWasOptimized))
                 {
                     optimized.RemoveRange(i, walk.TotalInstructionsCovered - i);
-                    optimized.InsertRange(i, newSet);
+                    optimized.InsertRange(i, tempSet);
 
                     wasOptimized = true;
-                }
+                    i += newSet.Count - 1;
+                    continue;
+                } 
 
-
-
-                i += newSet.Count;
+                i += newSet.Count - 1;
             }
 
             if (wasOptimized)
@@ -315,10 +327,10 @@ namespace YABFcompiler.DIL
                 }
                 else if (operation is PtrOp)
                 {
-                    arr[i] = null;
+                    //arr[i] = null;
                     var ptrOp = (PtrOp) operation;
                     ptr += ptrOp.Delta;
-                    didAnysubstitutions = true;
+                    //didAnysubstitutions = true;
                 }
                 else if (operation is WriteOp)
                 {
