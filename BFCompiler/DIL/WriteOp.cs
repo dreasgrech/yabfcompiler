@@ -1,4 +1,6 @@
 ﻿
+using System.Diagnostics;
+
 namespace YABFcompiler.DIL
 {
     using System;
@@ -6,7 +8,8 @@ namespace YABFcompiler.DIL
     using System.Linq;
     using System.Text;
 
-    class WriteOp:DILInstruction
+    [DebuggerDisplay("Output")]
+    class WriteOp : DILInstruction
     {
         public ConstantValue Constant { get; private set; }
 

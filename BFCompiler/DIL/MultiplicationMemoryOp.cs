@@ -1,4 +1,6 @@
 ﻿
+using System.Diagnostics;
+
 namespace YABFcompiler.DIL
 {
     using System;
@@ -6,6 +8,7 @@ namespace YABFcompiler.DIL
     using System.Linq;
     using System.Text;
 
+    [DebuggerDisplay("Mul => Offset: {Offset}, Scalar = {Scalar}")]
     class MultiplicationMemoryOp : DILInstruction
     {
         public int Offset { get; set; }

@@ -1,4 +1,6 @@
 ﻿
+using System.Diagnostics;
+
 namespace YABFcompiler.DIL
 {
     using System;
@@ -6,6 +8,7 @@ namespace YABFcompiler.DIL
     using System.Linq;
     using System.Text;
 
+    [DebuggerDisplay("Ptr => Delta = {Delta}")]
     class PtrOp : DILInstruction
     {
         public int Delta { get; set; }

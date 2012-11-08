@@ -637,6 +637,10 @@ namespace YABFcompiler
                 else if (dilInstruction is ReadOp)
                 {
                     Input(ilg, ((ReadOp)dilInstruction).Constant);
+                } else if (dilInstruction is AssignOp)
+                {
+                    var assign = dilInstruction as AssignOp;
+                    AssignValue(ilg, assign.Constant, assign.Value);
                 }
             }
         }
@@ -714,11 +718,24 @@ namespace YABFcompiler
         /// <param name="value"></param>
         private void AssignValue(ILGenerator ilg, int value = 1)
         {
+            AssignValue(ilg, null, value);
+        }
+
+        private void AssignValue(ILGenerator ilg, ConstantValue constant, int value = 1)
+        {
             ilg.Emit(OpCodes.Ldloc, array);
-            ilg.Emit(OpCodes.Ldloc, ptr);
+            if (constant != null)
+            {
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
+            } 
+            else
+            {
+                ilg.Emit(OpCodes.Ldloc, ptr);
+            }
             ILGeneratorHelpers.Load32BitIntegerConstant(ilg, value);
             ilg.Emit(OpCodes.Stelem_I2);
         }
+
 
         private void Increment(ILGenerator ilg, ConstantValue constant, int step = 1)
         {
