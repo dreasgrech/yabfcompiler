@@ -9,7 +9,8 @@ namespace TestRun
         {
             int index = 0;
             char[] chArray = new char[0x493e0];
-            chArray[0] = (char)(chArray[0] + '\x0005');
+            chArray[index + 1] = (char)(chArray[index + 1] + 'D');
+
         }
     }
 

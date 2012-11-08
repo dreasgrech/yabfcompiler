@@ -613,10 +613,10 @@ namespace YABFcompiler
                     var add = (AdditionMemoryOp) dilInstruction;
                     if (add.Scalar > 0)
                     {
-                        Increment(ilg, add.Constant , add.Scalar);
+                        Increment(ilg, add.Constant, add.Offset, add.Scalar);
                     } else
                     {
-                        Decrement(ilg, add.Constant, -add.Scalar);
+                        Decrement(ilg, add.Constant, add.Offset, - add.Scalar);
                     }
                 } 
                 else if (dilInstruction is PtrOp)
@@ -737,7 +737,7 @@ namespace YABFcompiler
         }
 
 
-        private void Increment(ILGenerator ilg, ConstantValue constant, int step = 1)
+        private void Increment(ILGenerator ilg, ConstantValue constant, int offset, int step = 1)
         {
             ilg.Emit(OpCodes.Ldloc, array);
             if (constant != null)
@@ -746,6 +746,17 @@ namespace YABFcompiler
             } else
             {
                 ilg.Emit(OpCodes.Ldloc, ptr);
+                if (offset != 0)
+                {
+                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(offset));
+                    if (offset > 0)
+                    {
+                        ilg.Emit(OpCodes.Add);
+                    } else
+                    {
+                        ilg.Emit(OpCodes.Sub);
+                    }
+                }
             }
 
             ilg.Emit(OpCodes.Ldloc, array);
@@ -756,6 +767,18 @@ namespace YABFcompiler
             else
             {
                 ilg.Emit(OpCodes.Ldloc, ptr);
+                if (offset != 0)
+                {
+                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(offset));
+                    if (offset > 0)
+                    {
+                        ilg.Emit(OpCodes.Add);
+                    }
+                    else
+                    {
+                        ilg.Emit(OpCodes.Sub);
+                    }
+                }
             }
             ilg.Emit(OpCodes.Ldelem_U2);
             ILGeneratorHelpers.Load32BitIntegerConstant(ilg, step);
@@ -772,7 +795,7 @@ namespace YABFcompiler
             Increment(ilg, null, step);
         }
 
-        private void Decrement(ILGenerator ilg, ConstantValue constantValue, int step = 1)
+        private void Decrement(ILGenerator ilg, ConstantValue constantValue, int offset, int step = 1)
         {
             ilg.Emit(OpCodes.Ldloc, array);
             if (constantValue != null)
@@ -782,6 +805,18 @@ namespace YABFcompiler
             else
             {
                 ilg.Emit(OpCodes.Ldloc, ptr);
+                if (offset != 0)
+                {
+                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(offset));
+                    if (offset > 0)
+                    {
+                        ilg.Emit(OpCodes.Add);
+                    }
+                    else
+                    {
+                        ilg.Emit(OpCodes.Sub);
+                    }
+                }
             }
 
             ilg.Emit(OpCodes.Ldloc, array);
@@ -792,6 +827,18 @@ namespace YABFcompiler
             else
             {
                 ilg.Emit(OpCodes.Ldloc, ptr);
+                if (offset != 0)
+                {
+                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(offset));
+                    if (offset > 0)
+                    {
+                        ilg.Emit(OpCodes.Add);
+                    }
+                    else
+                    {
+                        ilg.Emit(OpCodes.Sub);
+                    }
+                }
             }
 
             ilg.Emit(OpCodes.Ldelem_U2);
