@@ -23,12 +23,12 @@ namespace YABFcompiler.DIL
             Constant = constant;
         }
 
-        public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr, ConstantValue constant = null)
+        public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             ilg.Emit(OpCodes.Ldloc, array);
-            if (constant != null)
+            if (Constant != null)
             {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Constant.Value);
             }
             else
             {

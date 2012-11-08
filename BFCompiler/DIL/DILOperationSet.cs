@@ -13,6 +13,51 @@ namespace YABFcompiler.DIL
             AddRange(instructions);
         }
 
+        public static DILOperationSet Generate(LanguageInstruction[] languageInstructions)
+        {
+            var dilInstructions = new DILOperationSet();
+            for (int i = 0; i < languageInstructions.Length; i++)
+            {
+                var instruction = languageInstructions[i];
+
+                if ((instruction == LanguageInstruction.Inc || instruction == LanguageInstruction.Dec))
+                {
+                    dilInstructions.Add(new AdditionMemoryOp(0, instruction == LanguageInstruction.Inc ? 1 : -1));
+                    continue;
+                }
+
+                if (instruction == LanguageInstruction.IncPtr || instruction == LanguageInstruction.DecPtr)
+                {
+                    dilInstructions.Add(new PtrOp(instruction == LanguageInstruction.IncPtr ? 1 : -1));
+                    continue;
+                }
+
+                if (instruction == LanguageInstruction.StartLoop || instruction == LanguageInstruction.EndLoop)
+                {
+                    if (instruction == LanguageInstruction.StartLoop)
+                    {
+                        var loop = Loop.Construct(languageInstructions, i);
+                        dilInstructions.Add(new LoopOp(loop));
+
+                        i += loop.Instructions.Length + 1;
+                        continue;
+                    }
+
+                    continue;
+                }
+
+                /* The only instructions that arrive to this point are Input and Output  */
+
+                switch (instruction)
+                {
+                    case LanguageInstruction.Output: dilInstructions.Add(new WriteOp()); break;
+                    case LanguageInstruction.Input: dilInstructions.Add(new ReadOp()); break;
+                }
+            }
+
+            return dilInstructions;
+        }
+
         public new void Add(DILInstruction instruction)
         {
             base.Add(instruction);

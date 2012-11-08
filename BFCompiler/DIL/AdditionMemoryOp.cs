@@ -24,7 +24,7 @@ namespace YABFcompiler.DIL
             
         }
 
-        public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr, ConstantValue constant = null)
+        public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             if (Scalar > 0)
             {

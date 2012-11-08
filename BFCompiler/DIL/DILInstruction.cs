@@ -1,7 +1,10 @@
 ﻿
+using System.Reflection.Emit;
+
 namespace YABFcompiler.DIL
 {
-    abstract class DILInstruction
+    interface DILInstruction
     {
+        void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr);
     }
 }

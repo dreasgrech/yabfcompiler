@@ -14,32 +14,32 @@ namespace YABFcompiler.DIL
             Delta = delta;
         }
 
-        public void Emit(ILGenerator ilg, LocalBuilder ptr)
+        public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             if (Delta > 0)
             {
-                IncrementPtr(ilg, ptr, Delta);
+                IncrementPtr(ilg, ptr);
             }
             else
             {
-                DecrementPtr(ilg, ptr, -Delta);
+                DecrementPtr(ilg, ptr);
             }
         }
 
         /// <summary>
         /// Emit instructions to increment the pointer position by an integer constant
         /// </summary>
-        private void IncrementPtr(ILGenerator ilg, LocalBuilder ptr, int step = 1)
+        private void IncrementPtr(ILGenerator ilg, LocalBuilder ptr)
         {
-            ilg.Increment(ptr, step);
+            ilg.Increment(ptr, Delta);
         }
 
         /// <summary>
         /// Emit instructions to decrement the pointer position by an integer constant
         /// </summary>
-        private void DecrementPtr(ILGenerator ilg, LocalBuilder ptr, int step = 1)
+        private void DecrementPtr(ILGenerator ilg, LocalBuilder ptr)
         {
-            ilg.Decrement(ptr, step);
+            ilg.Decrement(ptr, -Delta);
         }
     }
 }

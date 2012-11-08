@@ -4,6 +4,9 @@ namespace YABFcompiler.DIL
     using System.Diagnostics;
     using System.Reflection.Emit;
 
+    /// <summary>
+    /// Assign an integer constant
+    /// </summary>
     [DebuggerDisplay("Ass => Offset: {Offset}, Value = {Value}")]
     class AssignOp : DILInstruction
     {
@@ -23,19 +26,19 @@ namespace YABFcompiler.DIL
             
         }
 
-        public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr, ConstantValue constant = null, int value = 1)
+        public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             ilg.Emit(OpCodes.Ldloc, array);
-            if (constant != null)
+            if (Constant != null)
             {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Constant.Value);
             }
             else
             {
                 ilg.Emit(OpCodes.Ldloc, ptr);
             }
 
-            ILGeneratorHelpers.Load32BitIntegerConstant(ilg, value);
+            ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Value);
             ilg.Emit(OpCodes.Stelem_I2);
         }
     }
