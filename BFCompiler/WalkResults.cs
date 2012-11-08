@@ -1,10 +1,8 @@
 ﻿
-using System;
-using YABFcompiler.DIL;
-
 namespace YABFcompiler
 {
     using System.Collections.Generic;
+    using DIL;
 
     class WalkResults
     {
@@ -34,23 +32,6 @@ namespace YABFcompiler
             EndPtrPosition = endPtrPosition;
             TotalInstructionsCovered = totalInstructionsCovered;
             MiscOperations = miscOperations;
-        }
-
-        public void IterateDomain(Action<int,int> callback)
-        {
-            foreach (var cellAndValue in Domain)
-            {
-                if (cellAndValue.Key != 0)
-                {
-                    callback(cellAndValue.Key, cellAndValue.Value);
-                }
-            }
-
-            // If there is no change on 0, then it's an infinite loop
-            if (Domain.ContainsKey(0))
-            {
-                callback(0, Domain[0]);
-            }
         }
     }
 }

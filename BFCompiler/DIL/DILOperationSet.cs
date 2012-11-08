@@ -129,10 +129,10 @@ namespace YABFcompiler.DIL
                     continue;
                 }
 
-                if (instruction is LoopOp)
-                {
-                    var loop = (LoopOp)instruction;
-                }
+                //if (instruction is LoopOp)
+                //{
+                //    var loop = (LoopOp)instruction;
+                //}
             }
 
             return new WalkResults(domain, ptrIndex, whereToStop, miscOperations);
@@ -230,10 +230,6 @@ namespace YABFcompiler.DIL
                         {
                             tempSet.Add(new AdditionMemoryOp(cell.Key, cell.Value));
                         }
-                        //else
-                        //{
-                        //    newSet.Add(new AssignOp(cell.Key, cell.Value));
-                        //}
                     }
 
                     if (walk.EndPtrPosition != 0)
@@ -291,7 +287,8 @@ namespace YABFcompiler.DIL
 
             return true;
         }
-        public bool LoopExpansion(ref DILOperationSet operations)
+
+        private bool LoopExpansion(ref DILOperationSet operations)
         {
             for (int i = 0; i < operations.Count; i++)
             {
@@ -373,11 +370,6 @@ namespace YABFcompiler.DIL
         private bool CanWeSubstituteConstants()
         {
             return !this.Any(i => i is LoopOp);
-        }
-
-        private bool IsSimple()
-        {
-            return this.All(i => i is AdditionMemoryOp || i is PtrOp || i is WriteOp || i is ReadOp);
         }
     }
 }
