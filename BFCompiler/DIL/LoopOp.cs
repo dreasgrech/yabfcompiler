@@ -44,7 +44,7 @@ namespace YABFcompiler.DIL
                     }
                 }
 
-                var walk = new CodeWalker().Walk(withUnrolledNestLoops);
+                var walk = new CodeWalker().Walk(withUnrolledNestLoops, 0);
                 foreach (var cell in walk.Domain)
                 {
                     if (cell.Key == 0)
@@ -66,7 +66,8 @@ namespace YABFcompiler.DIL
 
         public bool IsSimple()
         {
-            return new CodeWalker().Walk(Instructions).EndPtrPosition == 0;
+            // In here, I need to verify whether, ignoring nested
+            return new CodeWalker().Walk(Instructions, 0, false).EndPtrPosition == 0;
         }
 
         public bool IsClearanceLoop()

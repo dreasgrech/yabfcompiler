@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="CodeWalker.cs" />
+    <Compile Include="CompactOperationsResults.cs" />
     <Compile Include="CompilationOptions.cs" />
     <Compile Include="CompilerFactory.cs" />
     <Compile Include="DIL\AdditionMemoryOp.cs" />
