@@ -4,8 +4,8 @@ namespace YABFcompiler.DIL
     using System.Diagnostics;
     using System.Reflection.Emit;
 
-    [DebuggerDisplay("Mul => Offset: {Offset}, Scalar = {Scalar}")]
-    class MultiplicationMemoryOp : DILInstruction
+    [DebuggerDisplay("Mul => Offset: {Offset}, Scalar = {(char)Scalar}")]
+    class MultiplicationMemoryOp : DILInstruction, IOffsettable
     {
         // TODO: I guess this class needs a Constant as well, but I haven't yet emitted a multiplication
 

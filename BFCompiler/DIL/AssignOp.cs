@@ -7,8 +7,8 @@ namespace YABFcompiler.DIL
     /// <summary>
     /// Assign an integer constant
     /// </summary>
-    [DebuggerDisplay("Ass => Offset: {Offset}, Value = {Value}")]
-    class AssignOp : DILInstruction
+    [DebuggerDisplay("Ass => Offset: {Offset}, Value = {(char)Value}")]
+    class AssignOp : DILInstruction, IOffsettable
     {
         public int Offset { get; set; }
         public int Value { get; set; }

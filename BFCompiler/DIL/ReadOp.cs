@@ -6,21 +6,23 @@ namespace YABFcompiler.DIL
     using System.Reflection;
     using System.Reflection.Emit;
 
-    [DebuggerDisplay("Read => Count: {Repeated}")]
-    internal class ReadOp : DILInstruction
+    [DebuggerDisplay("Read => Offset: {Offset}, Count: {Repeated}")]
+    internal class ReadOp : DILInstruction, IOffsettable
     {
-        private readonly MethodInfo consoleReadMethodInfo = typeof(Console).GetMethod("Read");
-
+        public int Offset { get; set; }
         public int Repeated { get; private set; }
         public ConstantValue Constant { get; private set; }
 
-        public ReadOp(int repeated):this(repeated, null)
+        private readonly MethodInfo consoleReadMethodInfo = typeof(Console).GetMethod("Read");
+
+        public ReadOp(int offset, int repeated):this(offset, repeated, null)
         {
 
         }
 
-        public ReadOp(int repeated, ConstantValue constant)
+        public ReadOp(int offset, int repeated, ConstantValue constant)
         {
+            Offset = offset;
             Constant = constant;
             Repeated = repeated;
         }

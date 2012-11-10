@@ -25,11 +25,11 @@ namespace YABFcompiler.DIL
         public LoopUnrollingResults Unroll()
         {
             var unrolled = new DILOperationSet();
-            if (IsClearanceLoop())
-            {
-                unrolled.Add(new AssignOp(0, 0));
-                return new LoopUnrollingResults(unrolled, true);
-            }
+            //if (IsClearanceLoop())
+            //{
+            //    unrolled.Add(new AssignOp(0, 0));
+            //    return new LoopUnrollingResults(unrolled, true);
+            //}
 
             var withUnrolledNestLoops = new DILOperationSet();
             foreach (var instruction in Instructions)

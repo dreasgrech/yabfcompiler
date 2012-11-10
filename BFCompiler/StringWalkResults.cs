@@ -10,9 +10,9 @@ namespace YABFcompiler
         /// </summary>
         public int TotalInstructionsCovered { get; private set; }
 
-        public Dictionary<int, string> Strings { get; private set; }
+        public List<string> Strings { get; private set; }
 
-        public StringWalkResults(Dictionary<int,string> strings)
+        public StringWalkResults(List<string> strings)
         {
             Strings = strings;
         }

@@ -6,21 +6,23 @@ namespace YABFcompiler.DIL
     using System.Reflection;
     using System.Reflection.Emit;
 
-    [DebuggerDisplay("Write => Count: {Repeated}")]
-    class WriteOp : IRepeatable, DILInstruction
+    [DebuggerDisplay("Write => Offset: {Offset}, Count: {Repeated}, Constant: {Constant}")]
+    class WriteOp : IRepeatable, DILInstruction, IOffsettable
     {
+        public int Offset { get; set; }
         public int Repeated { get; private set; }
         public ConstantValue Constant { get; private set; }
 
         private static readonly MethodInfo consoleWriteMethodInfo = typeof(Console).GetMethod("Write", new[] { typeof(char) });
 
-        public WriteOp(int repeated): this(repeated, null)
+        public WriteOp(int offset, int repeated): this(offset, repeated, null)
         {
             
         }
 
-        public WriteOp(int repeated, ConstantValue constant)
+        public WriteOp(int offset, int repeated, ConstantValue constant)
         {
+            Offset = offset;
             Constant = constant;
             Repeated = repeated;
         }
@@ -55,6 +57,11 @@ namespace YABFcompiler.DIL
                     break;
                 }
 
+                if (instruction.Offset != Offset)
+                {
+                    break;
+                }
+
                 repeated += instruction.Repeated;
                 totalOperationsCovered++;
             }
@@ -62,7 +69,7 @@ namespace YABFcompiler.DIL
             if (totalOperationsCovered > 1)
             {
                 operations.RemoveRange(offset, totalOperationsCovered);
-                operations.Insert(offset, new WriteOp(repeated));
+                operations.Insert(offset, new WriteOp(Offset, repeated));
                 return true;
             }
 

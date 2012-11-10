@@ -10,18 +10,22 @@ namespace YABFcompiler
         /// Walks through the entire set of operations that it's provided.
         /// Loops are skipped.
         /// </summary>
-        /// <param name="operations"></param>
-        /// <param name="index"></param>
-        /// <param name="stopAtLoop"></param>
         /// <returns></returns>
         public WalkResults Walk(DILOperationSet operations)
+        {
+            return Walk(operations, operations.Count);
+        }
+
+        public WalkResults Walk(DILOperationSet operations, int count)
         {
             int ptrIndex = 0;
             var domain = new SortedDictionary<int, int>();
             var miscOperations = new SortedDictionary<int, DILInstruction>();
 
-            foreach (var instruction in operations)
+            for (int i = 0; i < count; i++)
             {
+                var instruction = operations[i];
+
                 if (instruction is AdditionMemoryOp)
                 {
                     var add = ((AdditionMemoryOp)instruction);
@@ -57,13 +61,7 @@ namespace YABFcompiler
                         miscOperations.Add(ptrIndex, instruction);
                     }
 
-                    continue;
                 }
-
-                //if (instruction is LoopOp)
-                //{
-                //    var loop = (LoopOp)instruction;
-                //}
             }
 
             return new WalkResults(domain, ptrIndex, operations.Count, miscOperations);

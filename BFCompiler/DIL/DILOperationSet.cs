@@ -48,8 +48,8 @@ namespace YABFcompiler.DIL
 
                 switch (instruction)
                 {
-                    case LanguageInstruction.Output: Add(new WriteOp(1)); break;
-                    case LanguageInstruction.Input: Add(new ReadOp(1)); break;
+                    case LanguageInstruction.Output: Add(new WriteOp(0, 1)); break;
+                    case LanguageInstruction.Input: Add(new ReadOp(0, 1)); break;
                 }
             }
         }
@@ -75,9 +75,8 @@ namespace YABFcompiler.DIL
 
             if (!WereConstantsSubstituted)
             {
-                int currentIndex = 0, nextIOOperationIndex = 0;
-
-                while ((nextIOOperationIndex = optimized.FindIndex(currentIndex, i => i.GetType() == typeof (WriteOp) || i.GetType() == typeof (ReadOp))) != -1)
+                int currentIndex = 0, nextIOOperationIndex, currentPtrIndex = 0;
+                while (currentIndex <= optimized.Count && (nextIOOperationIndex = optimized.FindIndex(currentIndex, i => i.GetType() == typeof(WriteOp) || i.GetType() == typeof(ReadOp))) != -1)
                 {
                     var subOperationSet = new DILOperationSet(optimized.Skip(currentIndex).Take(nextIOOperationIndex - currentIndex));
 
@@ -103,8 +102,23 @@ namespace YABFcompiler.DIL
                         tempSet.Add(miscOperation.Value);
                     }
 
+                    currentPtrIndex += walk.EndPtrPosition;
+
+                    if (currentIndex + subOperationSet.Count < optimized.Count)
+                    {
+                        var op = optimized[currentIndex + subOperationSet.Count];
+                        if (op is ReadOp || op is WriteOp)
+                        {
+                            ((IOffsettable)op).Offset = currentPtrIndex;
+                        }
+
+                    }
+
                     optimized.RemoveRange(currentIndex, subOperationSet.Count);
                     optimized.InsertRange(currentIndex, tempSet);
+
+
+
                     currentIndex += tempSet.Count + 1; // + 1 to skip the IO operation
                 }
             }
@@ -123,7 +137,7 @@ namespace YABFcompiler.DIL
             if (stringWalkResults != null && stringWalkResults.Strings.Count > 0)
             {
                 optimized.Clear();
-                var combine = String.Join("", stringWalkResults.Strings.Select(c => c.Value));
+                var combine = String.Join("", stringWalkResults.Strings);
                 optimized.Add(new WriteLiteralOp(combine));
 
                 return true;
@@ -272,7 +286,7 @@ namespace YABFcompiler.DIL
         {
             int ptr = 0;
             var domain = new Dictionary<int, char>();
-            var strings = new Dictionary<int, string>();
+            var strings = new List<string>();
 
             var containsOnlyAdditionAndWrites = this.All(i => i.GetType() == typeof (AdditionMemoryOp) || i.GetType() == typeof (WriteOp) || i.GetType() == typeof(PtrOp));
             if (containsOnlyAdditionAndWrites)
@@ -304,20 +318,10 @@ namespace YABFcompiler.DIL
                     var write = instruction as WriteOp;
                     if (write != null)
                     {
-                        var key = write.Constant != null ? write.Constant.Value : ptr;
+                        //var key = write.Constant != null ? write.Constant.Value : ptr;
+                        var key = write.Offset + ptr;
 
-                        if (strings.ContainsKey(key))
-                        {
-                            strings[key] += new string(domain[key], write.Repeated);
-                        } else
-                        {
-                            if (!domain.ContainsKey(key))
-                            {
-                                domain[key] = (char)0;
-                            }
-
-                            strings[key] = new string(domain[key], write.Repeated);
-                        }
+                        strings.Add(new string(domain[key], write.Repeated));
                     }
                 }
 
@@ -415,7 +419,7 @@ namespace YABFcompiler.DIL
                     var write = ((WriteOp) arr[i]);
                     if (write.Constant == null)
                     {
-                        arr[i] = new WriteOp(write.Repeated, new ConstantValue(ptr));
+                        arr[i] = new WriteOp(write.Offset, write.Repeated, new ConstantValue(ptr));
                         didAnysubstitutions = true;
                     }
                 }
@@ -424,7 +428,7 @@ namespace YABFcompiler.DIL
                     var read = ((ReadOp) arr[i]);
                     if (read.Constant == null)
                     {
-                        arr[i] = new ReadOp(read.Repeated, new ConstantValue(ptr));
+                        arr[i] = new ReadOp(read.Offset, read.Repeated, new ConstantValue(ptr));
                         didAnysubstitutions = true;
                     }
                 }
