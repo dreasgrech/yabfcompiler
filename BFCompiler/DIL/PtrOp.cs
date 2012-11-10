@@ -5,7 +5,7 @@ namespace YABFcompiler.DIL
     using System.Reflection.Emit;
 
     [DebuggerDisplay("Ptr => Delta = {Delta}")]
-    class PtrOp : DILInstruction
+    class PtrOp : DILInstruction, IRepeatable
     {
         public int Delta { get; set; }
 
@@ -40,6 +40,32 @@ namespace YABFcompiler.DIL
         private void DecrementPtr(ILGenerator ilg, LocalBuilder ptr)
         {
             ilg.Decrement(ptr, -Delta);
+        }
+
+        public bool Repeat(DILOperationSet operations, int offset)
+        {
+            int ptrDelta = Delta, totalPtrsCovered = 1;
+
+            for (int j = offset + 1; j < operations.Count; j++)
+            {
+                var instruction = operations[j] as PtrOp;
+                if (instruction == null)
+                {
+                    break;
+                }
+
+                ptrDelta += instruction.Delta;
+                totalPtrsCovered++;
+            }
+
+            if (totalPtrsCovered > 1)
+            {
+                operations.RemoveRange(offset, totalPtrsCovered);
+                operations.Insert(offset, new PtrOp(ptrDelta));
+                return true;
+            }
+
+            return false;
         }
     }
 }

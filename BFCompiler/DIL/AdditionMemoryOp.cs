@@ -6,7 +6,7 @@ namespace YABFcompiler.DIL
     using System.Reflection.Emit;
 
     [DebuggerDisplay("Add => Offset: {Offset}, Scalar = {Scalar}")]
-    class AdditionMemoryOp : DILInstruction
+    class AdditionMemoryOp : DILInstruction, IRepeatable
     {
         public int Offset { get; set; }
         public int Scalar { get; set; }
@@ -140,6 +140,39 @@ namespace YABFcompiler.DIL
             ilg.Emit(OpCodes.Add);
             ilg.Emit(OpCodes.Conv_U2);
             ilg.Emit(OpCodes.Stelem_I2);
+        }
+
+        public bool Repeat(DILOperationSet operations, int offset)
+        {
+            int delta = Scalar, totalOperationsCovered = 1;
+
+            for (int j = offset + 1; j < operations.Count; j++) // - i ?
+            {
+                var instruction = operations[j] as AdditionMemoryOp;
+                if (instruction == null)
+                {
+                    break;
+                }
+
+                if (instruction.Offset != Offset)
+                {
+                    break;
+                }
+
+                totalOperationsCovered++;
+                delta += instruction.Scalar;
+            }
+
+            if (totalOperationsCovered > 1)
+            {
+                operations.RemoveRange(offset, totalOperationsCovered);
+                operations.Insert(offset, new AdditionMemoryOp(Offset, delta));
+
+                return true;
+
+            }
+
+            return false;
         }
     }
 }

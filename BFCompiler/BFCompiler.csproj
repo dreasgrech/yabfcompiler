@@ -53,6 +53,7 @@
     <Compile Include="DIL\ConstantValue.cs" />
     <Compile Include="DIL\DILInstruction.cs" />
     <Compile Include="DIL\DILOperationSet.cs" />
+    <Compile Include="DIL\IRepeatable.cs" />
     <Compile Include="DIL\LoopOp.cs" />
     <Compile Include="DIL\MultiplicationMemoryOp.cs" />
     <Compile Include="DIL\PtrOp.cs" />
