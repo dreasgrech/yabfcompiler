@@ -4,6 +4,10 @@ namespace YABFcompiler
     using System.Collections.Generic;
     using System.Linq;
 
+    /// <summary>
+    /// TODO: I think this class contains a shitload of old methods that aren't used anymore.
+    /// Reason being that much of the logic contained in here was moved to the LoopOp DIL operation class.
+    /// </summary>
     class Loop
     {
         public int Index { get; set; }
@@ -62,26 +66,6 @@ namespace YABFcompiler
                     i = GetNextClosingLoopIndex(i).Value;
                 }
             }
-        }
-
-        /// <summary>
-        /// Returns true if a clearance pattern is detected with this loop
-        /// 
-        /// The following patterns are currently detected:
-        ///     [-], [+]
-        /// </summary>
-        /// <returns></returns>
-        public bool IsClearanceLoop()
-        {
-            if (Instructions.Length == 1) // [-] or [+]
-            {
-                if (Instructions[0] == LanguageInstruction.Dec || Instructions[0] == LanguageInstruction.Inc)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         /// <summary>

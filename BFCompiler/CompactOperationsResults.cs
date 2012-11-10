@@ -1,11 +1,6 @@
 ﻿
 namespace YABFcompiler
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-
     class CompactOperationsResults
     {
         public int Delta { get; private set; }

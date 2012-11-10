@@ -1,50 +1,60 @@
 ﻿
-using System;
-using System.Reflection.Emit;
-using System.Linq;
-
 namespace YABFcompiler.DIL
 {
+    using System;
     using System.Collections.Generic;
+    using System.Linq;
+    using System.Reflection.Emit;
 
     class LoopOp:DILInstruction
     {
-        public Loop Loop { get; private set; }
-        public DILOperationSet Instructions { get; private set; }
+        public DILOperationSet Instructions { get; set; }
         public List<LoopOp> NestedLoops { get;private set;}
- 
-        public LoopOp(Loop loop)
+
+        public LoopOp(Loop loop):this(new DILOperationSet(loop.Instructions))
         {
-            Loop = loop;
-            Instructions = DILOperationSet.Generate(loop.Instructions);
+            
+        }
+
+        public LoopOp(DILOperationSet instructions)
+        {
+            Instructions = instructions;
             NestedLoops = Instructions.OfType<LoopOp>().ToList();
         }
 
-        public List<DILInstruction> Unroll()
+        public LoopUnrollingResults Unroll()
         {
             var unrolled = new DILOperationSet();
             if (IsClearanceLoop())
             {
                 unrolled.Add(new AssignOp(0, 0));
-                return unrolled;
+                return new LoopUnrollingResults(unrolled, true);
             }
-            if (IsSimple())
+
+            var withUnrolledNestLoops = new DILOperationSet();
+            foreach (var instruction in Instructions)
             {
-                var withUnrolledNestLoops = new DILOperationSet();
-                foreach (var instruction in Instructions)
+                if (instruction is LoopOp)
                 {
-                    if (instruction is LoopOp)
+                    var nestedLoop = instruction as LoopOp;
+                    var ur = nestedLoop.Unroll();
+                    if (ur.WasLoopUnrolled)
                     {
-                        var nestedLoop = instruction as LoopOp;
-                        var ur = nestedLoop.Unroll();
-                        withUnrolledNestLoops.AddRange(ur);
+                        withUnrolledNestLoops.AddRange(ur.UnrolledInstructions);
                     } else
                     {
                         withUnrolledNestLoops.Add(instruction);
                     }
                 }
+                else
+                {
+                    withUnrolledNestLoops.Add(instruction);
+                }
+            }
 
-                var walk = new CodeWalker().Walk(withUnrolledNestLoops, 0);
+            if (IsSimple(withUnrolledNestLoops))
+            {
+                var walk = new CodeWalker().Walk(withUnrolledNestLoops);
                 foreach (var cell in walk.Domain)
                 {
                     if (cell.Key == 0)
@@ -55,21 +65,30 @@ namespace YABFcompiler.DIL
                     unrolled.Add(new MultiplicationMemoryOp(cell.Key, cell.Value));
                 }
 
-                if (Loop.WalkResults.Domain.ContainsKey(0))
+                if (walk.Domain.ContainsKey(0))
                 {
                     unrolled.Add(new AssignOp(0, 0));
                 }
+
+                return new LoopUnrollingResults(unrolled, true);
             }
 
-            return unrolled;
+            return new LoopUnrollingResults(withUnrolledNestLoops, false);
         }
 
-        public bool IsSimple()
+        public static bool IsSimple(DILOperationSet operations)
         {
             // In here, I need to verify whether, ignoring nested
-            return new CodeWalker().Walk(Instructions, 0, false).EndPtrPosition == 0;
+            return new CodeWalker().Walk(operations).EndPtrPosition == 0;
         }
 
+        /// <summary>
+        /// Returns true if a clearance pattern is detected with this loop
+        /// 
+        /// The following patterns are currently detected:
+        ///     [-], [+]
+        /// </summary>
+        /// <returns></returns>
         public bool IsClearanceLoop()
         {
             if (Instructions.Count == 1)
@@ -83,7 +102,7 @@ namespace YABFcompiler.DIL
             return false;
         }
  
-        public void Emit(ILGenerator ilg,LocalBuilder array, LocalBuilder ptr)
+        public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             var labels = EmitStartLoop(ilg);
             foreach (var instruction in Instructions)

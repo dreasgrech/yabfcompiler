@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
+﻿
 namespace YABFcompiler
 {
+    using System.Collections.Generic;
+
     class StringWalkResults
     {
         /// <summary>

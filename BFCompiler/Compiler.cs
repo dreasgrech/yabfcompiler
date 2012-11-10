@@ -17,7 +17,11 @@ namespace YABFcompiler
      * ASSUMPTIONS
      * Assumption #1:
      *  Every cell is initialized with 0
-     *  
+     * 
+     * NOTE: All of the below optimizations are heavily outdated.
+     * Since they were written, I've completely rearchitectured the optimizition process
+     * by introduction DIL (Dreas Intermediate Language).
+     * 
      * OPTIMIZATIONS
      * Optimization #1:
      *  Loops which could never be entered are ignored.
@@ -88,8 +92,6 @@ namespace YABFcompiler
 
         private LocalBuilder ptr;
         private LocalBuilder array;
-        private Stack<Label> loopStack;
-        private LanguageInstruction previousInstruction;
         private readonly Stack<LanguageInstruction> whileLoopStack = new Stack<LanguageInstruction>();
 
         public Compiler(Parser parser, CompilationOptions options = 0)
@@ -113,15 +115,13 @@ namespace YABFcompiler
             ptr = ilg.DeclareIntegerVariable();
             array = ilg.CreateArray<char>(DomainSize);
 
-            loopStack = new Stack<Label>();
-
             LanguageInstruction? areLoopOperationsBalanced;
             if ((areLoopOperationsBalanced = AreLoopOperationsBalanced()) != null)
             {
                 throw new InstructionNotFoundException(String.Format("Expected to find an {0} instruction but didn't.", (~areLoopOperationsBalanced.Value).ToString()));
             }
 
-            dilInstructions = DILOperationSet.Generate(instructions);
+            dilInstructions = new DILOperationSet(instructions);
 
             // If we're not in debug mode, optimize the shit out of it!
             if (!OptionEnabled(CompilationOptions.DebugMode))

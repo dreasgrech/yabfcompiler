@@ -7,28 +7,29 @@ namespace YABFcompiler.DIL
 
     class DILOperationSet:List<DILInstruction>
     {
+        public bool WereConstantsSubstituted { get; private set; }
+
         public DILOperationSet(){}
         public DILOperationSet(IEnumerable<DILInstruction> instructions)
         {
             AddRange(instructions);
         }
 
-        public static DILOperationSet Generate(LanguageInstruction[] languageInstructions)
+        public DILOperationSet(LanguageInstruction[] languageInstructions)
         {
-            var dilInstructions = new DILOperationSet();
             for (int i = 0; i < languageInstructions.Length; i++)
             {
                 var instruction = languageInstructions[i];
 
                 if ((instruction == LanguageInstruction.Inc || instruction == LanguageInstruction.Dec))
                 {
-                    dilInstructions.Add(new AdditionMemoryOp(0, instruction == LanguageInstruction.Inc ? 1 : -1));
+                    Add(new AdditionMemoryOp(0, instruction == LanguageInstruction.Inc ? 1 : -1));
                     continue;
                 }
 
                 if (instruction == LanguageInstruction.IncPtr || instruction == LanguageInstruction.DecPtr)
                 {
-                    dilInstructions.Add(new PtrOp(instruction == LanguageInstruction.IncPtr ? 1 : -1));
+                    Add(new PtrOp(instruction == LanguageInstruction.IncPtr ? 1 : -1));
                     continue;
                 }
 
@@ -37,7 +38,7 @@ namespace YABFcompiler.DIL
                     if (instruction == LanguageInstruction.StartLoop)
                     {
                         var loop = Loop.Construct(languageInstructions, i);
-                        dilInstructions.Add(new LoopOp(loop));
+                        Add(new LoopOp(loop));
 
                         i += loop.Instructions.Length + 1;
                     }
@@ -47,12 +48,10 @@ namespace YABFcompiler.DIL
 
                 switch (instruction)
                 {
-                    case LanguageInstruction.Output: dilInstructions.Add(new WriteOp()); break;
-                    case LanguageInstruction.Input: dilInstructions.Add(new ReadOp()); break;
+                    case LanguageInstruction.Output: Add(new WriteOp()); break;
+                    case LanguageInstruction.Input: Add(new ReadOp()); break;
                 }
             }
-
-            return dilInstructions;
         }
 
         public new void Add(DILInstruction instruction)
@@ -62,106 +61,119 @@ namespace YABFcompiler.DIL
 
         public bool Optimize(ref DILOperationSet optimized)
         {
-            // First expand all the simple loops
+
+            while (CompactAdditionAndPtrOperations(ref optimized)) { }
+
+            // expand all the simple loops
             while (LoopExpansion(ref optimized)) { }
 
-            while(CompactSameAdditionOperators(ref optimized)) {}
 
             optimized.RemoveAll(i => i == null);
 
-            bool wasOptimized = false;
-            do
-            {
-                var newSet = new DILOperationSet();
+            //bool wasOptimized = false;
+            //do
+            //{
+            var newSet = new DILOperationSet();
 
-                for (int i = 0; i < optimized.Count; i++)
-                {
-                    var instruction = optimized[i];
+                //for (int i = 0; i < optimized.Count; i++)
+                //{
+                //    var instruction = optimized[i];
 
-                    if (optimized[0] is AdditionMemoryOp || optimized[0] is AssignOp)
-                    {
-                        var assOp = optimized[0] as AssignOp;
-                        if (assOp != null && assOp.Offset == 0)
-                        {
-                            if (assOp.Value == 0)
-                            {
-                                optimized[0] = null;
-                                continue;
-                            }
-                        }
+                //    if (optimized[0] is AdditionMemoryOp || optimized[0] is AssignOp)
+                //    {
+                //        var assOp = optimized[0] as AssignOp;
+                //        if (assOp != null && assOp.Offset == 0)
+                //        {
+                //            if (assOp.Value == 0)
+                //            {
+                //                optimized[0] = null;
+                //                continue;
+                //            }
+                //        }
 
-                        var addOpp = optimized[0] as AdditionMemoryOp;
-                        if (addOpp != null)
-                        {
-                            if (addOpp.Scalar == 0) // Trying to add +0 ?
-                            {
-                                optimized[0] = null;
-                            }
-                            else
-                            {
-                                //optimized[0] = new AssignOp(addOpp.Offset, addOpp.Scalar);
-                            }
-                        }
-                    }
+                //        var addOpp = optimized[0] as AdditionMemoryOp;
+                //        if (addOpp != null)
+                //        {
+                //            if (addOpp.Scalar == 0) // Trying to add +0 ?
+                //            {
+                //                optimized[0] = null;
+                //            }
+                //            else
+                //            {
+                //                //optimized[0] = new AssignOp(addOpp.Offset, addOpp.Scalar);
+                //            }
+                //        }
+                //    }
 
-                    var removed = optimized.RemoveAll(o => o == null);
-                    if (i != 0)
-                    {
-                        i -= removed;
-                    }
+                //    var removed = optimized.RemoveAll(o => o == null);
+                //    if (i != 0)
+                //    {
+                //        i -= removed;
+                //    }
 
-                    // TODO: Continue working from here
+                    // TODO: Continue working from here (the call to Walk(i) needs to be replaced with CodeWalker.Walk)
                     // This problem here is with the CodeWalker Walk method
                     // because when I use the Walk method from this class, it works...
 
-                    //var walk = new CodeWalker().Walk(this, i);
-                    var walk = Walk(i);
+            if (!WereConstantsSubstituted)
+            {
+                // TODO: Continue working from here
+                // The Walk method returns the final state of the Domain after the walk.
+                // But since now it's walking over Write operations, I need to know more
+                // than the final state of the domain because I need to the emit the Writes
+                // as well.
 
-                    var tempSet = new DILOperationSet();
-                    foreach (var cell in walk.Domain)
+                var walk = new CodeWalker().Walk(this);
+                //var walk = Walk(i);
+
+                var tempSet = new DILOperationSet();
+                foreach (var cell in walk.Domain)
+                {
+                    if (cell.Value != 0)
                     {
-                        if (cell.Value != 0)
-                        {
-                            tempSet.Add(new AdditionMemoryOp(cell.Key, cell.Value));
-                        }
+                        tempSet.Add(new AdditionMemoryOp(cell.Key, cell.Value));
                     }
-
-                    if (walk.EndPtrPosition != 0)
-                    {
-                        tempSet.Add(new PtrOp(walk.EndPtrPosition));
-                    }
-
-                    foreach (var miscOperation in walk.MiscOperations)
-                    {
-                        tempSet.Add(miscOperation.Value);
-                    }
-
-                    newSet.AddRange(tempSet);
-
-                    var setThatWasOptimized = optimized.Skip(i).Take(walk.TotalInstructionsCovered - i).ToList();
-                    if (!tempSet.AreDILOperationSetsIdentical(setThatWasOptimized))
-                    {
-                        optimized.RemoveRange(i, walk.TotalInstructionsCovered - i);
-                        optimized.InsertRange(i, tempSet);
-
-                        wasOptimized = true;
-                        i += tempSet.Count - 1;
-                        continue;
-                    }
-
-                    wasOptimized = false;
                 }
-            } while (wasOptimized);
+
+                if (walk.EndPtrPosition != 0)
+                {
+                    tempSet.Add(new PtrOp(walk.EndPtrPosition));
+                }
+
+                foreach (var miscOperation in walk.MiscOperations)
+                {
+                    tempSet.Add(miscOperation.Value);
+                }
+
+                optimized = tempSet;
+            }
+            // newSet.AddRange(tempSet);
+
+                    //var setThatWasOptimized = optimized.Skip(i).Take(walk.TotalInstructionsCovered - i).ToList();
+                    //if (!tempSet.AreDILOperationSetsIdentical(setThatWasOptimized))
+                    //{
+                    //    optimized.RemoveRange(i, walk.TotalInstructionsCovered - i);
+                    //    optimized.InsertRange(i, tempSet);
+
+                    //    wasOptimized = true;
+                    //    i += tempSet.Count - 1;
+                    //    continue;
+                    //    //return true;
+                    //}
+
+                    //wasOptimized = false;
+                //}
+            //} while (wasOptimized);
 
 
             /* Begin: Constant Substitution */
-            if (CanWeSubstituteConstants())
-            {
-                if (SubstituteConstants(ref optimized))
-                {
-                    return true;
-                }
-            }
+                    if (CanWeSubstituteConstants())
+                    {
+                        if (SubstituteConstants(ref optimized))
+                        {
+                            return true;
+                        }
+                    }
             /* End: Constant Substitution */
 
             /* Begin: String walking */
@@ -178,20 +190,57 @@ namespace YABFcompiler.DIL
             //}
             /* End: String walking */
 
-            return wasOptimized;
+            return false;//wasOptimized;
         }
 
-        private bool CompactSameAdditionOperators(ref DILOperationSet operations)
+        private bool CompactAdditionAndPtrOperations(ref DILOperationSet operations)
         {
             for (int i = 0; i < operations.Count; i++)
             {
-                var currentInstruction = operations[i] as AdditionMemoryOp;
-                if (currentInstruction == null)
+                var loopInstruction = operations[i] as LoopOp;
+                if (loopInstruction != null)
+                {
+                    var loopInstructions = loopInstruction.Instructions;
+                    CompactAdditionAndPtrOperations(ref loopInstructions);
+                    loopInstruction.Instructions = loopInstructions;
+                    continue;
+                }
+
+                var ptrOperation = operations[i] as PtrOp;
+                if (ptrOperation != null)
+                {
+                    int ptrDelta = ptrOperation.Delta, totalPtrsCovered = 1;
+
+                    for (int j = i + 1; j < operations.Count; j++)
+                    {
+                        var instruction = operations[j] as PtrOp;
+                        if (instruction == null)
+                        {
+                            break;
+                        }
+
+                        ptrDelta += instruction.Delta;
+                        totalPtrsCovered++;
+                    }
+
+                    if (totalPtrsCovered > 1)
+                    {
+                        operations.RemoveRange(i, totalPtrsCovered);
+                        operations.Insert(i, new PtrOp(ptrDelta));
+                    }
+
+                    i += totalPtrsCovered - 1;
+                    continue;
+
+                }
+
+                var addInstruction = operations[i] as AdditionMemoryOp;
+                if (addInstruction == null)
                 {
                     continue;
                 }
 
-                int delta = currentInstruction.Scalar, totalOperationsCovered = 1;
+                int delta = addInstruction.Scalar, totalOperationsCovered = 1;
 
                 for (int j = i + 1; j < operations.Count; j++) // - i ?
                 {
@@ -201,7 +250,7 @@ namespace YABFcompiler.DIL
                         break;
                     }
 
-                    if (instruction.Offset != currentInstruction.Offset)
+                    if (instruction.Offset != addInstruction.Offset)
                     {
                         break;
                     }
@@ -213,7 +262,7 @@ namespace YABFcompiler.DIL
                 if (totalOperationsCovered - 1 > 0)
                 {
                     operations.RemoveRange(i, totalOperationsCovered);
-                    operations.Insert(i, new AdditionMemoryOp(currentInstruction.Offset, delta));
+                    operations.Insert(i, new AdditionMemoryOp(addInstruction.Offset, delta));
 
                     return true;
                 }
@@ -236,6 +285,11 @@ namespace YABFcompiler.DIL
             return null;
         }
 
+        /// <summary>
+        /// This method needs to be removed, and CodeWalker.Walk should be used instead.
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
         private WalkResults Walk(int index)
         {
             int ptrIndex = 0;
@@ -413,6 +467,11 @@ namespace YABFcompiler.DIL
 
         private bool LoopExpansion(ref DILOperationSet operations)
         {
+            if (!operations.ContainsLoops())
+            {
+                return false;
+            }
+
             for (int i = 0; i < operations.Count; i++)
             {
                 var operation = operations[i];
@@ -423,11 +482,16 @@ namespace YABFcompiler.DIL
 
                 var loopOp = (LoopOp) operation;
                 var unrolled = loopOp.Unroll();
-                if (unrolled.Count > 0)
+                if (unrolled.WasLoopUnrolled)
                 {
                     operations.RemoveAt(i); // remove the loop
-                    operations.InsertRange(i, unrolled);
+                    operations.InsertRange(i, unrolled.UnrolledInstructions);
                     return true; // One loop at a time
+                }
+                else
+                {
+                    operations.RemoveAt(i);
+                    operations.Insert(i, new LoopOp(unrolled.UnrolledInstructions));
                 }
 
             }
@@ -442,6 +506,11 @@ namespace YABFcompiler.DIL
         /// <param name="operations"></param>
         private bool SubstituteConstants(ref DILOperationSet operations)
         {
+            if (WereConstantsSubstituted)
+            {
+                return false;
+            }
+
             var ptr = 0;
             var arr = operations.ToArray();
             var didAnysubstitutions = false;
@@ -451,7 +520,7 @@ namespace YABFcompiler.DIL
                 if (operation is AdditionMemoryOp)
                 {
                     var add = (AdditionMemoryOp) operation;
-                    if (((AdditionMemoryOp) arr[i]).Constant == null)
+                    if (add.Constant == null)
                     {
                         arr[i] = new AdditionMemoryOp(ptr + add.Offset, add.Scalar, new ConstantValue(ptr + add.Offset));
                         didAnysubstitutions = true;
@@ -487,12 +556,19 @@ namespace YABFcompiler.DIL
 
             operations = new DILOperationSet(list);
 
+            operations.WereConstantsSubstituted = true;
+
             return didAnysubstitutions;
         }
 
         private bool CanWeSubstituteConstants()
         {
-            return !this.Any(i => i is LoopOp);
+            return !ContainsLoops();
+        }
+
+        public bool ContainsLoops()
+        {
+            return this.Any(i => i is LoopOp);
         }
     }
 }

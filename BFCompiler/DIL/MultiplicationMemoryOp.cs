@@ -1,9 +1,8 @@
 ﻿
-using System.Reflection.Emit;
-
 namespace YABFcompiler.DIL
 {
     using System.Diagnostics;
+    using System.Reflection.Emit;
 
     [DebuggerDisplay("Mul => Offset: {Offset}, Scalar = {Scalar}")]
     class MultiplicationMemoryOp : DILInstruction

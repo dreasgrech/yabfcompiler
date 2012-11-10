@@ -1,29 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using YABFcompiler.DIL;
-
+﻿
 namespace YABFcompiler
 {
+    using System.Collections.Generic;
+    using DIL;
+
     class CodeWalker
     {
-        public WalkResults Walk(DILOperationSet operations, int index, bool stopAtLoop = true)
+        /// <summary>
+        /// Walks through the entire set of operations that it's provided.
+        /// Loops are skipped.
+        /// </summary>
+        /// <param name="operations"></param>
+        /// <param name="index"></param>
+        /// <param name="stopAtLoop"></param>
+        /// <returns></returns>
+        public WalkResults Walk(DILOperationSet operations)
         {
             int ptrIndex = 0;
             var domain = new SortedDictionary<int, int>();
             var miscOperations = new SortedDictionary<int, DILInstruction>();
 
-            var end = operations.Count;
-            //int whereToStop = Math.Min(
-            //    1 + Math.Min((GetNextInstructionIndex<ReadOp>(operations, index) ?? end), GetNextInstructionIndex<WriteOp>(operations, index) ?? end)
-            //    , GetNextInstructionIndex<LoopOp>(operations, index) ?? end);
-
-            int whereToStop = stopAtLoop ?  GetNextInstructionIndex<LoopOp>(operations, index) ?? end : operations.Count;
-
-            var ins = stopAtLoop ? operations.Skip(index).Take(whereToStop - index).ToArray() : operations.ToArray();
-
-            foreach (var instruction in ins)
+            foreach (var instruction in operations)
             {
                 if (instruction is AdditionMemoryOp)
                 {
@@ -69,7 +66,7 @@ namespace YABFcompiler
                 //}
             }
 
-            return new WalkResults(domain, ptrIndex, whereToStop, miscOperations);
+            return new WalkResults(domain, ptrIndex, operations.Count, miscOperations);
         }
 
         private int? GetNextInstructionIndex<T>(DILOperationSet operations, int index) where T : DILInstruction

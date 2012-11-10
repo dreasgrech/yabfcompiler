@@ -1,10 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
+﻿
 namespace YABFcompiler
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text;
+
+    /// <summary>
+    /// TODO: The Interpreter should run optimized instructions, otherwise it would take forever to run a non-trivial program.
+    /// </summary>
     internal class Interpreter
     {
         private readonly Parser parser;
