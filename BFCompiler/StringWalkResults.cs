@@ -12,9 +12,15 @@ namespace YABFcompiler
 
         public List<string> Strings { get; private set; }
 
-        public StringWalkResults(List<string> strings)
+        /// <summary>
+        /// The state of the domain after the string walk
+        /// </summary>
+        public Dictionary<int, char> Domain { get; private set; }
+
+        public StringWalkResults(List<string> strings, Dictionary<int, char> domain)
         {
             Strings = strings;
+            Domain = domain;
         }
     }
 }

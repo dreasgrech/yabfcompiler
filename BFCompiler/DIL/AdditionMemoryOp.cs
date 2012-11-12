@@ -5,7 +5,7 @@ namespace YABFcompiler.DIL
     using System.Diagnostics;
     using System.Reflection.Emit;
 
-    [DebuggerDisplay("Add => Offset: {Offset}, Scalar = {(char)Scalar}")]
+    [DebuggerDisplay("Add => Offset: {Offset}, Scalar = {(char)Scalar}, Constant: {Constant}")]
     class AdditionMemoryOp : DILInstruction, IRepeatable, IOffsettable
     {
         public int Offset { get; set; }

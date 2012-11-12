@@ -1,4 +1,6 @@
 ﻿
+using System.Diagnostics;
+
 namespace YABFcompiler.DIL
 {
     using System;
@@ -6,8 +8,10 @@ namespace YABFcompiler.DIL
     using System.Linq;
     using System.Reflection.Emit;
 
+    [DebuggerDisplay("Loop => Simple: {Simple}")]
     class LoopOp:DILInstruction
     {
+        private static int C;
         public DILOperationSet Instructions { get; set; }
         public List<LoopOp> NestedLoops { get;private set;}
 
@@ -43,7 +47,7 @@ namespace YABFcompiler.DIL
                         withUnrolledNestLoops.AddRange(ur.UnrolledInstructions);
                     } else
                     {
-                        withUnrolledNestLoops.Add(instruction);
+                        withUnrolledNestLoops.Add(new LoopOp(ur.UnrolledInstructions));
                     }
                 }
                 else
@@ -52,8 +56,11 @@ namespace YABFcompiler.DIL
                 }
             }
 
+            // c++ < 18 fails
+            //if (C < 18 && IsSimple(withUnrolledNestLoops))
             if (IsSimple(withUnrolledNestLoops))
             {
+                C++;
                 var walk = new CodeWalker().Walk(withUnrolledNestLoops);
                 foreach (var cell in walk.Domain)
                 {
@@ -62,13 +69,23 @@ namespace YABFcompiler.DIL
                         continue;
                     }
 
-                    unrolled.Add(new MultiplicationMemoryOp(cell.Key, cell.Value));
+                    // If the scalar value of the multiplication operation is 0,
+                    // then simply assign 0 to the cell because n * 0 = 0.
+                    if (cell.Value == 0)
+                    {
+                        unrolled.Add(new AssignOp(cell.Key, 0));
+                    } 
+                    else
+                    {
+                        unrolled.Add(new MultiplicationMemoryOp(cell.Key, cell.Value));
+                    }
                 }
 
-                if (walk.Domain.ContainsKey(0))
-                {
+                // If it's a simple loop, then the cell position of the loop should always be assigned a 0 since that's when the loop stops.
+                //if (walk.Domain.ContainsKey(0))
+                //{
                     unrolled.Add(new AssignOp(0, 0));
-                }
+                //}
 
                 return new LoopUnrollingResults(unrolled, true);
             }
@@ -76,9 +93,17 @@ namespace YABFcompiler.DIL
             return new LoopUnrollingResults(withUnrolledNestLoops, false);
         }
 
+        /// <summary>
+        /// I'm only using this method for debugging purposes
+        /// </summary>
+        public bool Simple{get
+        {
+            return new CodeWalker().Walk(Instructions).EndPtrPosition == 0;            
+        }}
+
         public static bool IsSimple(DILOperationSet operations)
         {
-            // In here, I need to verify whether, ignoring nested
+            // In here I need to verify whether, ignoring nested loops, the pointer returns to the initial position of the loop after execution
             return new CodeWalker().Walk(operations).EndPtrPosition == 0;
         }
 
@@ -93,7 +118,7 @@ namespace YABFcompiler.DIL
         {
             if (Instructions.Count == 1)
             {
-                if (Instructions[0].GetType() == typeof(AdditionMemoryOp))
+                if (Instructions[0] is AdditionMemoryOp)
                 {
                     return true;
                 }

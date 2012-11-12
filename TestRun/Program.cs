@@ -8,8 +8,11 @@ namespace TestRun
         private static void Main()
         {
             int index = 0;
-            char[] chArray = new char[0x493e0];
-            Console.Write("Hello string");
+            byte[] chArray = new byte[0x493e0];
+            chArray[0] = 65;
+            Console.WriteLine((char)chArray[0]);
+            Console.ReadKey();
+
 
         }
     }

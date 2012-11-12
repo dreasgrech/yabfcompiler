@@ -1,4 +1,6 @@
 ﻿
+using System;
+
 namespace YABFcompiler.DIL
 {
     using System.Diagnostics;
@@ -11,11 +13,20 @@ namespace YABFcompiler.DIL
 
         public int Offset { get; set; }
         public int Scalar { get; set; }
+        public ConstantValue Constant { get; set; }
+        public ConstantValue MultiplicationConstant { get; set; }
 
-        public MultiplicationMemoryOp(int offset, int scalar)
+        public MultiplicationMemoryOp(int offset, int scalar, ConstantValue constant, ConstantValue multiplicationConstant)
         {
             Offset = offset;
             Scalar = scalar;
+            Constant = constant;
+            MultiplicationConstant = multiplicationConstant;
+        }
+
+        public MultiplicationMemoryOp(int offset, int scalar): this (offset, scalar, null, null)
+        {
+
         }
 
         /// <summary>
@@ -28,49 +39,59 @@ namespace YABFcompiler.DIL
         public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             ilg.Emit(OpCodes.Ldloc, array);
-            ilg.Emit(OpCodes.Ldloc, ptr);
-
-            if (Offset != 0)
+            if (Constant != null)
             {
-                OpCode instruction;
-                int os = Offset;
-                if (Offset > 0)
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Constant.Value);
+            }
+            else
+            {
+                ilg.Emit(OpCodes.Ldloc, ptr);
+                if (Offset != 0)
                 {
-                    instruction = OpCodes.Add;
+                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(Offset));
+                    if (Offset > 0)
+                    {
+                        ilg.Emit(OpCodes.Add);
+                    }
+                    else
+                    {
+                        ilg.Emit(OpCodes.Sub);
+                    }
                 }
-                else
-                {
-                    instruction = OpCodes.Sub;
-                    os = -os;
-                }
-
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, os);
-                ilg.Emit(instruction);
             }
 
             ilg.Emit(OpCodes.Ldloc, array);
-            ilg.Emit(OpCodes.Ldloc, ptr);
-            if (Offset != 0)
+            if (Constant != null)
             {
-                OpCode instruction;
-                int os = Offset;
-                if (Offset > 0)
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Constant.Value);
+            }
+            else
+            {
+                ilg.Emit(OpCodes.Ldloc, ptr);
+                if (Offset != 0)
                 {
-                    instruction = OpCodes.Add;
+                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(Offset));
+                    if (Offset > 0)
+                    {
+                        ilg.Emit(OpCodes.Add);
+                    }
+                    else
+                    {
+                        ilg.Emit(OpCodes.Sub);
+                    }
                 }
-                else
-                {
-                    instruction = OpCodes.Sub;
-                    os = -os;
-                }
-
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, os);
-                ilg.Emit(instruction);
             }
 
             ilg.Emit(OpCodes.Ldelem_U2);
             ilg.Emit(OpCodes.Ldloc, array);
-            ilg.Emit(OpCodes.Ldloc, ptr);
+            if (MultiplicationConstant != null)
+            {
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, MultiplicationConstant.Value);
+            }
+            else
+            {
+                ilg.Emit(OpCodes.Ldloc, ptr);
+            }
             ilg.Emit(OpCodes.Ldelem_U2);
             if (Scalar != 1) // multiply only if the scalar is != 1
             {

@@ -45,6 +45,7 @@ namespace YABFcompiler
                 {
                     var assign = (AssignOp)instruction;
                     AssignOperationToDomain(domain, ptrIndex + assign.Offset, assign.Value);
+                    continue;
                 }
 
                 if (instruction is PtrOp)
@@ -71,7 +72,7 @@ namespace YABFcompiler
         {
             for (int i = index; i < operations.Count; i++)
             {
-                if (operations[i].GetType() == typeof(T))
+                if (operations[i] is T)
                 {
                     return i;
                 }
