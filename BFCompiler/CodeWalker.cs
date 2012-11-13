@@ -3,6 +3,7 @@ namespace YABFcompiler
 {
     using System.Collections.Generic;
     using DIL;
+    using DIL.Operations;
 
     class CodeWalker
     {

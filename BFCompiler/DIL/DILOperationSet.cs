@@ -4,6 +4,7 @@ namespace YABFcompiler.DIL
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using Operations;
 
     class DILOperationSet:List<DILInstruction>
     {
@@ -513,9 +514,17 @@ namespace YABFcompiler.DIL
             return this.Any(i => i is LoopOp);
         }
 
+        /// <summary>
+        /// TODO: As per the Github link, this method is flawed.
+        ///       Bug: https://github.com/dreasgrech/yabfcompiler/issues/17
+        /// </summary>
+        /// <returns></returns>
         public bool ContainsPointerOperations()
         {
-            return this.Any(i => i is PtrOp);
+            return true;
+
+            // Commenting out this condition for now because it's flawed.
+            // return this.Any(i => i is PtrOp); 
         }
     }
 }

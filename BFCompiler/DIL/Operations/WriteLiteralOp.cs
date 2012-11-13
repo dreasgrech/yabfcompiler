@@ -1,5 +1,5 @@
 ﻿
-namespace YABFcompiler.DIL
+namespace YABFcompiler.DIL.Operations
 {
     using System;
     using System.Reflection;

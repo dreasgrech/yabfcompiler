@@ -1,8 +1,7 @@
 ﻿
-using System.Diagnostics;
-
-namespace YABFcompiler.DIL
+namespace YABFcompiler.DIL.Operations
 {
+    using System.Diagnostics;
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -98,7 +97,7 @@ namespace YABFcompiler.DIL
         /// </summary>
         public bool Simple{get
         {
-            return new CodeWalker().Walk(Instructions).EndPtrPosition == 0;            
+            return IsSimple(Instructions);            
         }}
 
         /// <summary>

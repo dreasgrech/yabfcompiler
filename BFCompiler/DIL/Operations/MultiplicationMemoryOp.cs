@@ -1,8 +1,7 @@
 ﻿
-using System;
-
-namespace YABFcompiler.DIL
+namespace YABFcompiler.DIL.Operations
 {
+    using System;
     using System.Diagnostics;
     using System.Reflection.Emit;
 
