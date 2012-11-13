@@ -101,10 +101,18 @@ namespace YABFcompiler.DIL
             return new CodeWalker().Walk(Instructions).EndPtrPosition == 0;            
         }}
 
+        /// <summary>
+        /// A simple loop is a loop which, when ignoring nested loops, the pointer returns to the initial position of the loop after execution
+        /// 
+        /// A nested loop also doesn't contain any IO.
+        /// </summary>
+        /// <param name="operations"></param>
+        /// <returns></returns>
         public static bool IsSimple(DILOperationSet operations)
         {
-            // In here I need to verify whether, ignoring nested loops, the pointer returns to the initial position of the loop after execution
-            return new CodeWalker().Walk(operations).EndPtrPosition == 0;
+            return 
+                new CodeWalker().Walk(operations).EndPtrPosition == 0 
+                && !operations.Any(o => o is WriteOp || o is ReadOp);
         }
 
         /// <summary>

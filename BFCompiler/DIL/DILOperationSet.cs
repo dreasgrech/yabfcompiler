@@ -67,10 +67,10 @@ namespace YABFcompiler.DIL
             }
 
             // expand all the simple loops
-            //while (LoopExpansion(ref optimized))
-            //{
-            //    return true; // After some loops have been expanded, there might be new repeatable operations which need to be compacted.
-            //}
+            while (LoopExpansion(ref optimized))
+            {
+                return true; // After some loops have been expanded, there might be new repeatable operations which need to be compacted.
+            }
 
             optimized.RemoveAll(i => i == null);
 
