@@ -67,10 +67,10 @@ namespace YABFcompiler.DIL
             }
 
             // expand all the simple loops
-            while (LoopExpansion(ref optimized))
-            {
-                return true; // After some loops have been expanded, there might be new repeatable operations which need to be compacted.
-            }
+            //while (LoopExpansion(ref optimized))
+            //{
+            //    return true; // After some loops have been expanded, there might be new repeatable operations which need to be compacted.
+            //}
 
             optimized.RemoveAll(i => i == null);
 
@@ -80,7 +80,7 @@ namespace YABFcompiler.DIL
             //    while (
             //        currentIndex <= optimized.Count &&
             //        (nextIOOperationIndex = optimized.FindIndex(currentIndex,
-            //            i => i is WriteOp || i is ReadOp || i is AssignOp)) != -1)
+            //            i => i is WriteOp || i is ReadOp /*|| i is AssignOp*/)) != -1)
             //    {
             //        var subOperationSet = new DILOperationSet(optimized.Skip(currentIndex).Take(nextIOOperationIndex - currentIndex));
 
@@ -93,7 +93,7 @@ namespace YABFcompiler.DIL
             //        //    }
             //        //}
 
-            //        var walk = new CodeWalker().Walk(subOperationSet);
+            //        var walk = new CodeWalker().Walk(optimized, nextIOOperationIndex);
             //        //var walk = Walk(i);
 
             //        var tempSet = new DILOperationSet();
@@ -110,16 +110,16 @@ namespace YABFcompiler.DIL
             //            tempSet.Add(new PtrOp(walk.EndPtrPosition));
             //        }
 
-            //        foreach (var miscOperation in walk.MiscOperations)
-            //        {
-            //            tempSet.Add(miscOperation.Value);
-            //        }
+            //        //foreach (var miscOperation in walk.MiscOperations)
+            //        //{
+            //        //    tempSet.Add(miscOperation.Value);
+            //        //}
 
             //        currentPtrIndex += walk.EndPtrPosition;
 
-            //        if (currentIndex + subOperationSet.Count < optimized.Count)
+            //        if (nextIOOperationIndex - currentIndex < optimized.Count)
             //        {
-            //            var op = optimized[currentIndex + subOperationSet.Count];
+            //            var op = optimized[nextIOOperationIndex - currentIndex];
             //            if (op is ReadOp || op is WriteOp)
             //            {
             //                ((IOffsettable)op).Offset = currentPtrIndex;
@@ -127,7 +127,7 @@ namespace YABFcompiler.DIL
 
             //        }
 
-            //        optimized.RemoveRange(currentIndex, subOperationSet.Count);
+            //        optimized.RemoveRange(currentIndex, nextIOOperationIndex - currentIndex);
             //        optimized.InsertRange(currentIndex, tempSet);
 
             //        currentIndex += tempSet.Count + 1; // + 1 to skip the IO operation
@@ -135,24 +135,24 @@ namespace YABFcompiler.DIL
             //}
 
             /* Constant Substitution */
-            if (CanWeSubstituteConstants())
-            {
-                if (SubstituteConstants(ref optimized))
-                {
-                    return true;
-                }
-            }
+            //if (CanWeSubstituteConstants())
+            //{
+            //    if (SubstituteConstants(ref optimized))
+            //    {
+            //        return true;
+            //    }
+            //}
 
             /* String walking */
-            var stringWalkResults = StringWalk();
-            if (stringWalkResults != null && stringWalkResults.Strings.Count > 0)
-            {
-                optimized.Clear();
-                var combine = String.Join("", stringWalkResults.Strings);
-                optimized.Add(new WriteLiteralOp(combine));
+            //var stringWalkResults = StringWalk();
+            //if (stringWalkResults != null && stringWalkResults.Strings.Count > 0)
+            //{
+            //    optimized.Clear();
+            //    var combine = String.Join("", stringWalkResults.Strings);
+            //    optimized.Add(new WriteLiteralOp(combine));
 
-                return true;
-            }
+            //    return true;
+            //}
 
             return false;
         }
@@ -295,6 +295,9 @@ namespace YABFcompiler.DIL
 
         /// <summary>
         /// TODO: This method currently does not compute MultiplicationMemoryOps! :(
+        ///       I need to decide whether I should support PtrOps in this method.
+        ///       I think it would be best if not to because 
+        /// 
         /// </summary>
         /// <returns></returns>
         private StringWalkResults StringWalk()
@@ -305,7 +308,7 @@ namespace YABFcompiler.DIL
 
             var canWeWalk = this.All(i =>
                 i is AdditionMemoryOp ||
-                //i is MultiplicationMemoryOp ||
+                // i is MultiplicationMemoryOp ||
                 i is WriteOp || 
                 i is PtrOp ||
                 i is AssignOp);
@@ -339,14 +342,13 @@ namespace YABFcompiler.DIL
                     var mul = instruction as MultiplicationMemoryOp;
                     if (mul != null)
                     {
-                        // Calculate the multiplication in here!
+                        // multiplication operation in here
                     }
 
                     var write = instruction as WriteOp;
                     if (write != null)
                     {
-                        //var key = write.Constant != null ? write.Constant.Value : ptr;
-                        var key = write.Offset + ptr;
+                       var key = write.Constant != null ? write.Constant.Value : write.Offset + ptr;
 
                         strings.Add(new string(domain[key], write.Repeated));
 

@@ -20,7 +20,7 @@ namespace YABFcompiler
         {
             int ptrIndex = 0;
             var domain = new SortedDictionary<int, int>();
-            var miscOperations = new SortedDictionary<int, DILInstruction>();
+            //var miscOperations = new SortedDictionary<int, DILInstruction>();
 
             for (int i = 0; i < count; i++)
             {
@@ -55,17 +55,17 @@ namespace YABFcompiler
                     continue;
                 }
 
-                if (instruction is WriteOp || instruction is ReadOp)
-                {
-                    if (!miscOperations.ContainsKey(ptrIndex))
-                    {
-                        miscOperations.Add(ptrIndex, instruction);
-                    }
+                //if (instruction is WriteOp || instruction is ReadOp)
+                //{
+                //    if (!miscOperations.ContainsKey(ptrIndex))
+                //    {
+                //        miscOperations.Add(ptrIndex, instruction);
+                //    }
 
-                }
+                //}
             }
 
-            return new WalkResults(domain, ptrIndex, operations.Count, miscOperations);
+            return new WalkResults(domain, ptrIndex, operations.Count, /*miscOperations*/ null);
         }
 
         private int? GetNextInstructionIndex<T>(DILOperationSet operations, int index) where T : DILInstruction
@@ -97,7 +97,7 @@ namespace YABFcompiler
         {
             if (domain.ContainsKey(index))
             {
-                domain[index] *= step;
+                domain[index] += step;
                 return domain[index];
             }
 
