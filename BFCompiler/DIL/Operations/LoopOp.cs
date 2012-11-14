@@ -28,11 +28,11 @@ namespace YABFcompiler.DIL.Operations
         public LoopUnrollingResults Unroll()
         {
             var unrolled = new DILOperationSet();
-            //if (IsClearanceLoop())
-            //{
-            //    unrolled.Add(new AssignOp(0, 0));
-            //    return new LoopUnrollingResults(unrolled, true);
-            //}
+            if (IsClearanceLoop())
+            {
+                unrolled.Add(new AssignOp(0, 0));
+                return new LoopUnrollingResults(unrolled, true);
+            }
 
             var withUnrolledNestLoops = new DILOperationSet();
             foreach (var instruction in Instructions)
@@ -81,10 +81,10 @@ namespace YABFcompiler.DIL.Operations
                 }
 
                 // If it's a simple loop, then the cell position of the loop should always be assigned a 0 since that's when the loop stops.
-                //if (walk.Domain.ContainsKey(0))
-                //{
+                if (walk.Domain.ContainsKey(0))
+                {
                     unrolled.Add(new AssignOp(0, 0));
-                //}
+                }
 
                 return new LoopUnrollingResults(unrolled, true);
             }
@@ -104,14 +104,26 @@ namespace YABFcompiler.DIL.Operations
         /// A simple loop is a loop which, when ignoring nested loops, the pointer returns to the initial position of the loop after execution
         /// 
         /// A nested loop also doesn't contain any IO.
+        /// 
+        /// This method needs to be changed to an instance method
         /// </summary>
         /// <param name="operations"></param>
         /// <returns></returns>
         public static bool IsSimple(DILOperationSet operations)
         {
-            return 
-                new CodeWalker().Walk(operations).EndPtrPosition == 0 
-                && !operations.Any(o => o is WriteOp || o is ReadOp);
+            return
+                new CodeWalker().Walk(operations).EndPtrPosition == 0
+                && !ContainsIO(operations);
+        }
+
+        /// <summary>
+        /// This method needs to be changed to an instance method
+        /// </summary>
+        /// <param name="operations"></param>
+        /// <returns></returns>
+        public static bool ContainsIO(DILOperationSet operations)
+        {
+            return operations.Any(o => o is WriteOp || o is ReadOp);
         }
 
         /// <summary>

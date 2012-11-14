@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestRun", "TestRun\TestRun.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompilerTests", "CompilerTests\CompilerTests.csproj", "{D9266DA8-292E-4886-AFFD-24481F4DE6FA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Translator", "Translator\Translator.csproj", "{B5480621-3EAD-49EE-9F0C-A267851E1CEE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -25,6 +27,10 @@ Global
 		{D9266DA8-292E-4886-AFFD-24481F4DE6FA}.Debug|x86.Build.0 = Debug|x86
 		{D9266DA8-292E-4886-AFFD-24481F4DE6FA}.Release|x86.ActiveCfg = Release|x86
 		{D9266DA8-292E-4886-AFFD-24481F4DE6FA}.Release|x86.Build.0 = Release|x86
+		{B5480621-3EAD-49EE-9F0C-A267851E1CEE}.Debug|x86.ActiveCfg = Debug|x86
+		{B5480621-3EAD-49EE-9F0C-A267851E1CEE}.Debug|x86.Build.0 = Debug|x86
+		{B5480621-3EAD-49EE-9F0C-A267851E1CEE}.Release|x86.ActiveCfg = Release|x86
+		{B5480621-3EAD-49EE-9F0C-A267851E1CEE}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

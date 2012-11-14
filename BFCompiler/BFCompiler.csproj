@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="BiDictionaryOneToOne.cs" />
     <Compile Include="CodeWalker.cs" />
     <Compile Include="CompactOperationsResults.cs" />
     <Compile Include="CompilationOptions.cs" />

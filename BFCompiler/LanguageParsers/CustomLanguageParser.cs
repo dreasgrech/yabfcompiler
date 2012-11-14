@@ -2,17 +2,16 @@
 namespace YABFcompiler.LanguageParsers
 {
     using System;
-    using System.Collections.Generic;
 
-    class CustomLanguageParser:Parser
+    public class CustomLanguageParser:Parser
     {
         public CustomLanguageParser(string[] languageDefinition) : base(Parse(languageDefinition))
         {
         }
 
-        public static Dictionary<string, LanguageInstruction> Parse(string[] languageDefinition)
+        public static BiDictionaryOneToOne<string, LanguageInstruction> Parse(string[] languageDefinition)
         {
-            var operators = new Dictionary<string, LanguageInstruction>();
+            var operators = new BiDictionaryOneToOne<string, LanguageInstruction>();
             foreach (var line in languageDefinition)
             {
                 var firstSpace = line.IndexOf(" ");

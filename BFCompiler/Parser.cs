@@ -7,10 +7,10 @@ namespace YABFcompiler
 
     public abstract class Parser
     {
-        protected Dictionary<string,LanguageInstruction> AllowedInstructions { get; private set; }
+        public BiDictionaryOneToOne<string,LanguageInstruction> AllowedInstructions { get; private set; }
         protected int MinimumTokenLength { get; private set; }
 
-        protected Parser(Dictionary<string,LanguageInstruction> instructions)
+        protected Parser(BiDictionaryOneToOne<string, LanguageInstruction> instructions)
         {
             AllowedInstructions = instructions;
             MinimumTokenLength = instructions.Min(d => d.Key.Length);
@@ -18,12 +18,12 @@ namespace YABFcompiler
 
         public IEnumerable<LanguageInstruction> GenerateDIL(string source)
         {
-            return GetTokens(source).Select(token => AllowedInstructions[token]);
+            return GetTokens(source).Select(token => AllowedInstructions.GetByFirst(token));
         }
 
         private IEnumerable<string> GetTokens(string source)
         {
-            source = source.Replace("\r\n", ""); 
+            source = source.Replace("\r", "").Replace("\n", ""); 
             int index = 0;
             string token;
             while ((token = GetNextToken(source, ref index)) != null)
@@ -34,7 +34,8 @@ namespace YABFcompiler
 
         private bool IsTokenAllowed(string token)
         {
-            return AllowedInstructions.ContainsKey(token);
+            LanguageInstruction languageInstruction;
+            return AllowedInstructions.TryGetByFirst(token, out languageInstruction);
         }
 
         private static string RemoveWhitespace(string s)

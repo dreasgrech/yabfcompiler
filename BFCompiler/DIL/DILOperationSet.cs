@@ -81,20 +81,12 @@ namespace YABFcompiler.DIL
             //    while (
             //        currentIndex <= optimized.Count &&
             //        (nextIOOperationIndex = optimized.FindIndex(currentIndex,
-            //            i => i is WriteOp || i is ReadOp /*|| i is AssignOp*/)) != -1)
+            //            i => i is WriteOp || i is ReadOp || i is LoopOp)) != -1)
             //    {
             //        var subOperationSet = new DILOperationSet(optimized.Skip(currentIndex).Take(nextIOOperationIndex - currentIndex));
 
-            //        //foreach (var subOperation in subOperationSet)
-            //        //{
-            //        //    var offsettable = subOperation as IOffsettable;
-            //        //    if (offsettable != null)
-            //        //    {
-            //        //        offsettable.Offset += currentPtrIndex;
-            //        //    }
-            //        //}
-
-            //        var walk = new CodeWalker().Walk(optimized, nextIOOperationIndex);
+            //        var walk = new CodeWalker().Walk(subOperationSet, subOperationSet.Count);
+            //        //var walk = new CodeWalker().Walk(optimized, nextIOOperationIndex);
             //        //var walk = Walk(i);
 
             //        var tempSet = new DILOperationSet();
@@ -118,20 +110,29 @@ namespace YABFcompiler.DIL
 
             //        currentPtrIndex += walk.EndPtrPosition;
 
-            //        if (nextIOOperationIndex - currentIndex < optimized.Count)
-            //        {
-            //            var op = optimized[nextIOOperationIndex - currentIndex];
-            //            if (op is ReadOp || op is WriteOp)
-            //            {
-            //                ((IOffsettable)op).Offset = currentPtrIndex;
-            //            }
+            //        //if (nextIOOperationIndex - currentIndex < optimized.Count)
+            //        //{
+            //        //    var op = optimized[nextIOOperationIndex - currentIndex];
+            //        //    if (op is ReadOp || op is WriteOp)
+            //        //    {
+            //        //        ((IOffsettable)op).Offset = currentPtrIndex;
+            //        //    }
 
-            //        }
+            //        //}
 
             //        optimized.RemoveRange(currentIndex, nextIOOperationIndex - currentIndex);
             //        optimized.InsertRange(currentIndex, tempSet);
 
             //        currentIndex += tempSet.Count + 1; // + 1 to skip the IO operation
+
+            //        //// If the instruction that we stopped at is a loop, then break from
+            //        //// this optimization step because then we wouldn't be able to do 
+            //        //// any more walks.
+            //        //// This may change in the future...
+            //        //if (optimized[currentIndex - 1] is LoopOp) 
+            //        //{
+            //        //    break;
+            //        //}
             //    }
             //}
 
@@ -523,7 +524,7 @@ namespace YABFcompiler.DIL
         {
             return true;
 
-            // Commenting out this condition for now because it's flawed.
+            /* Commenting out this condition for now because it's flawed. */
             // return this.Any(i => i is PtrOp); 
         }
     }

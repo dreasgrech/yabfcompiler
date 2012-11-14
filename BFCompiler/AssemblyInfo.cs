@@ -3,7 +3,7 @@ namespace YABFcompiler
 {
     using System.Reflection.Emit;
 
-    internal class AssemblyInfo
+    public class AssemblyInfo
     {
         public AssemblyBuilder DynamicAssembly { get; private set; }
         public TypeBuilder MainClass { get; private set; }
