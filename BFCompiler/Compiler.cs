@@ -149,7 +149,7 @@ namespace YABFcompiler
             var assembly = CreateAssemblyAndEntryPoint(filename);
             ILGenerator ilg = assembly.MainMethod.GetILGenerator();
 
-            LocalBuilder array = ilg.CreateArray<char>(DomainSize);
+            LocalBuilder array = ilg.CreateArray<byte>(DomainSize);
             LocalBuilder ptr = null;
 
             // Do not emit the pointer variable if it's not needed.

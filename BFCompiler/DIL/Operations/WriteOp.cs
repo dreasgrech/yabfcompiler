@@ -27,6 +27,15 @@ namespace YABFcompiler.DIL.Operations
             Repeated = repeated;
         }
 
+        /// <summary>
+        /// Given an offset of 2, generates:
+        /// Console.Write((char) buffer[index + 2]);
+        /// 
+        /// TODO: This method is missing the Offset usage
+        /// </summary>
+        /// <param name="ilg"></param>
+        /// <param name="array"></param>
+        /// <param name="ptr"></param>
         public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             for (int i = 0; i < Repeated; i++)
@@ -41,7 +50,7 @@ namespace YABFcompiler.DIL.Operations
                     ilg.Emit(OpCodes.Ldloc, ptr);
                 }
 
-                ilg.Emit(OpCodes.Ldelem_U2);
+                ilg.Emit(OpCodes.Ldelem_U1);
                 ilg.EmitCall(OpCodes.Call, consoleWriteMethodInfo, null);
             }
         }

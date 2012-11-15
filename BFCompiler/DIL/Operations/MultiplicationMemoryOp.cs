@@ -30,10 +30,10 @@ namespace YABFcompiler.DIL.Operations
 
         /// <summary>
         /// Given an offset of 2 and scalar of 3, generates:
-        /// chArray[index + 2] = (char) (chArray[index + 2] + ((char) (chArray[index] * '\x0003')));
+        /// buffer[index + 2] = (byte) (buffer[index + 2] + (buffer[index] * 3));
         /// 
         /// If the scalar is 1, no multiplication is done:
-        /// chArray[index + 2] = (char) (chArray[index + 2] + chArray[index]);
+        /// buffer[index + 2] = (byte) (buffer[index + 2] + buffer[index]);
         /// </summary>
         public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
@@ -81,7 +81,7 @@ namespace YABFcompiler.DIL.Operations
                 }
             }
 
-            ilg.Emit(OpCodes.Ldelem_U2);
+            ilg.Emit(OpCodes.Ldelem_U1);
             ilg.Emit(OpCodes.Ldloc, array);
             if (MultiplicationConstant != null)
             {
@@ -91,17 +91,17 @@ namespace YABFcompiler.DIL.Operations
             {
                 ilg.Emit(OpCodes.Ldloc, ptr);
             }
-            ilg.Emit(OpCodes.Ldelem_U2);
+
+            ilg.Emit(OpCodes.Ldelem_U1);
             if (Scalar != 1) // multiply only if the scalar is != 1
             {
                 ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Scalar);
                 ilg.Emit(OpCodes.Mul);
-                ilg.Emit(OpCodes.Conv_U2);
             }
 
             ilg.Emit(OpCodes.Add);
-            ilg.Emit(OpCodes.Conv_U2);
-            ilg.Emit(OpCodes.Stelem_I2);
+            ilg.Emit(OpCodes.Conv_U1); // Cast the whole expression to byte
+            ilg.Emit(OpCodes.Stelem_I1);
         }
     }
 }

@@ -149,6 +149,12 @@ namespace YABFcompiler.DIL.Operations
             return false;
         }
  
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="ilg"></param>
+        /// <param name="array"></param>
+        /// <param name="ptr"></param>
         public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             var labels = EmitStartLoop(ilg);
@@ -176,7 +182,7 @@ namespace YABFcompiler.DIL.Operations
             ilg.MarkLabel(mark);
             ilg.Emit(OpCodes.Ldloc, array);
             ilg.Emit(OpCodes.Ldloc, ptr);
-            ilg.Emit(OpCodes.Ldelem_U2);
+            ilg.Emit(OpCodes.Ldelem_U1);
             ilg.Emit(OpCodes.Brtrue, go);
         }
     }

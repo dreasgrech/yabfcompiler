@@ -14,6 +14,13 @@ namespace YABFcompiler.DIL.Operations
             Delta = delta;
         }
 
+        /// <summary>
+        /// Given a delta of 3, generates:
+        /// ptr += 3;
+        /// </summary>
+        /// <param name="ilg"></param>
+        /// <param name="array"></param>
+        /// <param name="ptr"></param>
         public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             if (Delta > 0)

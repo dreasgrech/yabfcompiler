@@ -24,6 +24,13 @@ namespace YABFcompiler.DIL.Operations
             
         }
 
+        /// <summary>
+        /// Given an offset of 4 and a scalar of 6, generates:
+        /// buffer[index + 4] = (byte) (buffer[index + 4] + 6);
+        /// </summary>
+        /// <param name="ilg"></param>
+        /// <param name="array"></param>
+        /// <param name="ptr"></param>
         public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             if (Scalar > 0)
@@ -38,63 +45,20 @@ namespace YABFcompiler.DIL.Operations
 
         private void Decrement(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr, ConstantValue constantValue, int offset, int step = 1)
         {
-            ilg.Emit(OpCodes.Ldloc, array);
-            if (constantValue != null)
-            {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constantValue.Value);
-            }
-            else
-            {
-                ilg.Emit(OpCodes.Ldloc, ptr);
-                if (offset != 0)
-                {
-                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(offset));
-                    if (offset > 0)
-                    {
-                        ilg.Emit(OpCodes.Add);
-                    }
-                    else
-                    {
-                        ilg.Emit(OpCodes.Sub);
-                    }
-                }
-            }
-
-            ilg.Emit(OpCodes.Ldloc, array);
-            if (constantValue != null)
-            {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constantValue.Value);
-            }
-            else
-            {
-                ilg.Emit(OpCodes.Ldloc, ptr);
-                if (offset != 0)
-                {
-                    ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Math.Abs(offset));
-                    if (offset > 0)
-                    {
-                        ilg.Emit(OpCodes.Add);
-                    }
-                    else
-                    {
-                        ilg.Emit(OpCodes.Sub);
-                    }
-                }
-            }
-
-            ilg.Emit(OpCodes.Ldelem_U2);
-            ILGeneratorHelpers.Load32BitIntegerConstant(ilg, step);
-            ilg.Emit(OpCodes.Sub);
-            ilg.Emit(OpCodes.Conv_U2);
-            ilg.Emit(OpCodes.Stelem_I2);
+            IncDec(ilg, array, ptr, constantValue, offset, step, OpCodes.Sub);
         }
 
-        private void Increment(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr, ConstantValue constant, int offset, int step = 1)
+        private void Increment(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr, ConstantValue constantValue, int offset, int step = 1)
+        {
+            IncDec(ilg, array, ptr, constantValue, offset, step, OpCodes.Add);
+        }
+
+        private void IncDec(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr, ConstantValue constantValue, int offset, int step, OpCode addSub)
         {
             ilg.Emit(OpCodes.Ldloc, array);
-            if (constant != null)
+            if (constantValue != null)
             {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constantValue.Value);
             }
             else
             {
@@ -114,9 +78,9 @@ namespace YABFcompiler.DIL.Operations
             }
 
             ilg.Emit(OpCodes.Ldloc, array);
-            if (constant != null)
+            if (constantValue != null)
             {
-                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constant.Value);
+                ILGeneratorHelpers.Load32BitIntegerConstant(ilg, constantValue.Value);
             }
             else
             {
@@ -135,11 +99,11 @@ namespace YABFcompiler.DIL.Operations
                 }
             }
 
-            ilg.Emit(OpCodes.Ldelem_U2);
+            ilg.Emit(OpCodes.Ldelem_U1);
             ILGeneratorHelpers.Load32BitIntegerConstant(ilg, step);
-            ilg.Emit(OpCodes.Add);
-            ilg.Emit(OpCodes.Conv_U2);
-            ilg.Emit(OpCodes.Stelem_I2);
+            ilg.Emit(addSub);
+            ilg.Emit(OpCodes.Conv_U1);
+            ilg.Emit(OpCodes.Stelem_I1);
         }
 
         public bool Repeat(DILOperationSet operations, int offset)

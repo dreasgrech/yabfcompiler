@@ -27,6 +27,13 @@ namespace YABFcompiler.DIL.Operations
             
         }
 
+        /// <summary>
+        /// Given an offset of 3 and a value of 2, generates:
+        /// buffer[index + 3] = 2;
+        /// </summary>
+        /// <param name="ilg"></param>
+        /// <param name="array"></param>
+        /// <param name="ptr"></param>
         public void Emit(ILGenerator ilg, LocalBuilder array, LocalBuilder ptr)
         {
             ilg.Emit(OpCodes.Ldloc, array);
@@ -52,7 +59,7 @@ namespace YABFcompiler.DIL.Operations
             }
 
             ILGeneratorHelpers.Load32BitIntegerConstant(ilg, Value);
-            ilg.Emit(OpCodes.Stelem_I2);
+            ilg.Emit(OpCodes.Stelem_I1);
         }
 
         public bool Repeat(DILOperationSet operations, int offset)
