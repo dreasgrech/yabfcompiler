@@ -58,7 +58,9 @@
     <None Include="Programs\Brainfuck\brainfuck.bf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Programs\Brainfuck\mandelbrot.bf" />
+    <None Include="Programs\Brainfuck\mandelbrot.bf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Programs\Brainfuck\quine1.bf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -10,7 +10,6 @@ namespace YABFcompiler.DIL.Operations
     [DebuggerDisplay("Loop => Simple: {Simple}")]
     class LoopOp:DILInstruction
     {
-        private static int C;
         public DILOperationSet Instructions { get; set; }
         public List<LoopOp> NestedLoops { get;private set;}
 
@@ -28,11 +27,11 @@ namespace YABFcompiler.DIL.Operations
         public LoopUnrollingResults Unroll()
         {
             var unrolled = new DILOperationSet();
-            if (IsClearanceLoop())
-            {
-                unrolled.Add(new AssignOp(0, 0));
-                return new LoopUnrollingResults(unrolled, true);
-            }
+            //if (IsClearanceLoop())
+            //{
+            //    unrolled.Add(new AssignOp(0, 0));
+            //    return new LoopUnrollingResults(unrolled, true);
+            //}
 
             var withUnrolledNestLoops = new DILOperationSet();
             foreach (var instruction in Instructions)
@@ -55,38 +54,42 @@ namespace YABFcompiler.DIL.Operations
                 }
             }
 
-            // c++ < 18 fails
-            //if (C < 18 && IsSimple(withUnrolledNestLoops))
             if (IsSimple(withUnrolledNestLoops))
             {
-                C++;
                 var walk = new CodeWalker().Walk(withUnrolledNestLoops);
-                foreach (var cell in walk.Domain)
+                if (walk.Domain.ContainsKey(0) && walk.Domain[0] == -1)
                 {
-                    if (cell.Key == 0)
+                    foreach (var cell in walk.Domain)
                     {
-                        continue;
+                        if (cell.Key == 0)
+                        {
+                            continue;
+                        }
+
+                        //// If the scalar value of the multiplication operation is 0,
+                        //// then simply assign 0 to the cell because n * 0 = 0.
+                        //if (cell.Value == 0)
+                        //{
+                        //    unrolled.Add(new AssignOp(cell.Key, 0));
+                        //}
+                        //else
+                        //{
+                            unrolled.Add(new MultiplicationMemoryOp(cell.Key, cell.Value));
+                        //}
                     }
 
-                    // If the scalar value of the multiplication operation is 0,
-                    // then simply assign 0 to the cell because n * 0 = 0.
-                    if (cell.Value == 0)
+                    // If it's a simple loop, then the cell position of the loop should always be assigned a 0 since that's when the loop stops.
+                    if (walk.Domain.ContainsKey(0))
                     {
-                        unrolled.Add(new AssignOp(cell.Key, 0));
-                    } 
-                    else
-                    {
-                        unrolled.Add(new MultiplicationMemoryOp(cell.Key, cell.Value));
+                        unrolled.Add(new AssignOp(0, 0));
                     }
-                }
 
-                // If it's a simple loop, then the cell position of the loop should always be assigned a 0 since that's when the loop stops.
-                if (walk.Domain.ContainsKey(0))
+                    return new LoopUnrollingResults(unrolled, true);
+                } else
                 {
-                    unrolled.Add(new AssignOp(0, 0));
+                    return new LoopUnrollingResults(withUnrolledNestLoops, false);
+                    
                 }
-
-                return new LoopUnrollingResults(unrolled, true);
             }
 
             return new LoopUnrollingResults(withUnrolledNestLoops, false);

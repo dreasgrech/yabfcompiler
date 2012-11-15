@@ -55,11 +55,6 @@ namespace YABFcompiler.DIL
             }
         }
 
-        public new void Add(DILInstruction instruction)
-        {
-            base.Add(instruction);
-        }
-
         public bool Optimize(ref DILOperationSet optimized)
         {
 
@@ -68,10 +63,10 @@ namespace YABFcompiler.DIL
             }
 
             // expand all the simple loops
-            while (LoopExpansion(ref optimized))
-            {
-                return true; // After some loops have been expanded, there might be new repeatable operations which need to be compacted.
-            }
+            //while (LoopExpansion(ref optimized))
+            //{
+            //    return true; // After some loops have been expanded, there might be new repeatable operations which need to be compacted.
+            //}
 
             optimized.RemoveAll(i => i == null);
 
@@ -406,12 +401,14 @@ namespace YABFcompiler.DIL
                 var loopOp = (LoopOp) operation;
                 var unrolled = loopOp.Unroll();
                 if (unrolled.WasLoopUnrolled)
+                    //if (false)
                 {
                     operations.RemoveAt(i); // remove the loop
                     operations.InsertRange(i, unrolled.UnrolledInstructions);
                     return true; // One loop at a time
                 }
 
+                // TODO: The problem I'm having with loop unrolling is with the two statements
                 operations.RemoveAt(i);
                 operations.Insert(i, new LoopOp(unrolled.UnrolledInstructions));
             }
