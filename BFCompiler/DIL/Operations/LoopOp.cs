@@ -8,7 +8,7 @@ namespace YABFcompiler.DIL.Operations
     using System.Reflection.Emit;
 
     [DebuggerDisplay("Loop => Simple: {Simple}")]
-    class LoopOp:DILInstruction
+    class LoopOp:DILInstruction, IInterpretable
     {
         public DILOperationSet Instructions { get; set; }
         public List<LoopOp> NestedLoops { get;private set;}
@@ -184,6 +184,21 @@ namespace YABFcompiler.DIL.Operations
             ilg.Emit(OpCodes.Ldloc, ptr);
             ilg.Emit(OpCodes.Ldelem_U1);
             ilg.Emit(OpCodes.Brtrue, go);
+        }
+
+        public void Interpret(byte[] domain, ref int ptr)
+        {
+            while (domain[ptr] != 0)
+            {
+                foreach (var instruction in Instructions)
+                {
+                    var interpretableInstruction = instruction as IInterpretable;
+                    if (interpretableInstruction != null)
+                    {
+                        interpretableInstruction.Interpret(domain, ref ptr);
+                    }
+                }
+            }
         }
     }
 }

@@ -76,6 +76,8 @@ namespace YABFcompiler
     {
         /// <summary>
         /// The size of the array domain for brainfuck to work in
+        /// 
+        /// TODO: Maybe this should be passed as a command line arg?
         /// </summary>
         private const int DomainSize = 0x493e0;
 
@@ -113,6 +115,9 @@ namespace YABFcompiler
                 {
                 }
             }
+
+            //var interpreter = new Interpreter(30000);
+            //interpreter.Run(dilInstructions);
 
             return CompileToExecutable(dilInstructions, filename);
         }

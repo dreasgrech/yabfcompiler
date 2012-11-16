@@ -49,6 +49,7 @@
     <Compile Include="CompactOperationsResults.cs" />
     <Compile Include="CompilationOptions.cs" />
     <Compile Include="CompilerFactory.cs" />
+    <Compile Include="DIL\IInterpretable.cs" />
     <Compile Include="DIL\Operations\AdditionMemoryOp.cs" />
     <Compile Include="DIL\Operations\AssignOp.cs" />
     <Compile Include="DIL\ConstantValue.cs" />

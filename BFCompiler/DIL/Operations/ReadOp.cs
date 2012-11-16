@@ -7,7 +7,7 @@ namespace YABFcompiler.DIL.Operations
     using System.Reflection.Emit;
 
     [DebuggerDisplay("Read => Offset: {Offset}, Count: {Repeated}")]
-    internal class ReadOp : DILInstruction, IOffsettable, IRepeatable
+    internal class ReadOp : DILInstruction, IOffsettable, IRepeatable, IInterpretable
     {
         public int Offset { get; set; }
         public int Repeated { get; private set; }
@@ -90,6 +90,12 @@ namespace YABFcompiler.DIL.Operations
             }
 
             return false;
+        }
+
+        public void Interpret(byte[] domain, ref int ptr)
+        {
+            // TODO: Maybe I should do the Repeated loop in here?
+            domain[ptr + Offset] = (byte)Console.Read();
         }
     }
 }

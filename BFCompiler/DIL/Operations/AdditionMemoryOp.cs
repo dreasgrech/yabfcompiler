@@ -6,7 +6,7 @@ namespace YABFcompiler.DIL.Operations
     using System.Reflection.Emit;
 
     [DebuggerDisplay("Add => Offset: {Offset}, Scalar = {(char)Scalar}, Constant: {Constant}")]
-    class AdditionMemoryOp : DILInstruction, IRepeatable, IOffsettable
+    class AdditionMemoryOp : DILInstruction, IRepeatable, IOffsettable, IInterpretable
     {
         public int Offset { get; set; }
         public int Scalar { get; set; }
@@ -137,6 +137,11 @@ namespace YABFcompiler.DIL.Operations
             }
 
             return false;
+        }
+
+        public void Interpret(byte[] domain, ref int ptr)
+        {
+            domain[ptr + Offset] += (byte)Scalar;
         }
     }
 }

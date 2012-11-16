@@ -70,7 +70,9 @@
     <None Include="Programs\Dreas\dreas.yabfc">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Programs\Dreas\pilkington.d" />
+    <None Include="Programs\Dreas\pilkington.d">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Programs\Ook!\lenny.ook">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

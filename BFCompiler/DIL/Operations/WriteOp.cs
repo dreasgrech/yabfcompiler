@@ -7,7 +7,7 @@ namespace YABFcompiler.DIL.Operations
     using System.Reflection.Emit;
 
     [DebuggerDisplay("Write => Offset: {Offset}, Count: {Repeated}, Constant: {Constant}")]
-    class WriteOp : IRepeatable, DILInstruction, IOffsettable
+    class WriteOp : IRepeatable, DILInstruction, IOffsettable, IInterpretable
     {
         public int Offset { get; set; }
         public int Repeated { get; private set; }
@@ -83,6 +83,14 @@ namespace YABFcompiler.DIL.Operations
             }
 
             return false;
+        }
+
+        public void Interpret(byte[] domain, ref int ptr)
+        {
+            for (int i = 0; i < Repeated; i++)
+            {
+                Console.Write((char)domain[ptr + Offset]);
+            }
         }
     }
 }

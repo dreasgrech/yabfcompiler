@@ -6,7 +6,7 @@ namespace YABFcompiler.DIL.Operations
     using System.Reflection.Emit;
 
     [DebuggerDisplay("Mul => Offset: {Offset}, Scalar = {(char)Scalar}")]
-    class MultiplicationMemoryOp : DILInstruction, IOffsettable
+    class MultiplicationMemoryOp : DILInstruction, IOffsettable, IInterpretable
     {
         // TODO: I guess this class needs a Constant as well, but I haven't yet emitted a multiplication
 
@@ -102,6 +102,11 @@ namespace YABFcompiler.DIL.Operations
             ilg.Emit(OpCodes.Add);
             ilg.Emit(OpCodes.Conv_U1); // Cast the whole expression to byte
             ilg.Emit(OpCodes.Stelem_I1);
+        }
+
+        public void Interpret(byte[] domain, ref int ptr)
+        {
+            domain[ptr + Offset] += (byte)(domain[ptr] * Scalar);
         }
     }
 }

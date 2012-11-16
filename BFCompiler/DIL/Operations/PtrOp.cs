@@ -5,7 +5,7 @@ namespace YABFcompiler.DIL.Operations
     using System.Reflection.Emit;
 
     [DebuggerDisplay("Ptr => Delta = {Delta}")]
-    class PtrOp : DILInstruction, IRepeatable
+    class PtrOp : DILInstruction, IRepeatable, IInterpretable
     {
         public int Delta { get; set; }
 
@@ -73,6 +73,11 @@ namespace YABFcompiler.DIL.Operations
             }
 
             return false;
+        }
+
+        public void Interpret(byte[] domain, ref int ptr)
+        {
+            ptr += Delta;
         }
     }
 }

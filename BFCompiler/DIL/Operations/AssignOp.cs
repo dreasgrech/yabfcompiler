@@ -9,7 +9,7 @@ namespace YABFcompiler.DIL.Operations
     /// Assign an integer constant
     /// </summary>
     [DebuggerDisplay("Ass => Offset: {Offset}, Value = {(char)Value}, Constant: {Constant}")]
-    class AssignOp : DILInstruction, IOffsettable, IRepeatable
+    class AssignOp : DILInstruction, IOffsettable, IRepeatable, IInterpretable
     {
         public int Offset { get; set; }
         public int Value { get; set; }
@@ -96,6 +96,11 @@ namespace YABFcompiler.DIL.Operations
             }
 
             return false;
+        }
+
+        public void Interpret(byte[] domain, ref int ptr)
+        {
+            domain[ptr + Offset] = (byte)Value;
         }
     }
 }

@@ -2,37 +2,33 @@
 namespace YABFcompiler
 {
     using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
+    using DIL;
 
-    /// <summary>
-    /// TODO: The Interpreter should run optimized instructions, otherwise it would take forever to run a non-trivial program.
-    /// </summary>
     internal class Interpreter
     {
-        private readonly Parser parser;
- 
-        public Interpreter(Parser parser)
+        public byte[] Domain { get; private set; }
+        public int Ptr { get; private set; }
+
+        public Interpreter(int domainSize)
         {
-            this.parser = parser;
+            Domain = new byte[domainSize];
         }
 
-        public void Run(string source)
+        public void Run(DILOperationSet operations)
         {
-            var instructions = parser.GenerateDIL(source);
-
-            var array = new char[0x493e0];
-            int ptr = 0;
-            foreach (var instruction in instructions)
+            int ptr = Ptr; // since you can't pass a Property by reference...
+            foreach (var instruction in operations)
             {
-                switch (instruction)
+                var interpretableInstruction = instruction as IInterpretable;
+                if (interpretableInstruction != null)
                 {
-                    //case DILInstruction.Inc:array[ptr]
+                    interpretableInstruction.Interpret(Domain, ref ptr);
+                    Ptr = ptr;
+                } else
+                {
+                    throw new Exception("Why isn't this instruction interpretable?");
                 }
             }
-
-            throw new NotImplementedException("Still working on this one");
         }
     }
 }
